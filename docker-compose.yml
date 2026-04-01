@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  iquant:
+    build: .
+    container_name: iquant-portal
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-iquant}
+      - DB_USER=${DB_USER:-iquant}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - iquant-network
+
+  # 可选：PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: iquant-postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME:-iquant}
+      - POSTGRES_USER=${DB_USER:-iquant}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-iquant123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - iquant-network
+
+networks:
+  iquant-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
