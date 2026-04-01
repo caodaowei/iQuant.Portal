@@ -1,0 +1,74 @@
+# 可配置多智能体系统
+# 定义多个 Agent 及其参数
+
+agents:
+  # 技术面分析师
+  - name: "技术面分析师"
+    agent_type: "market_analyst"
+    enabled: true
+    weight: 0.25
+    params:
+      days: 60
+      strategies:
+        - "MA"
+        - "MACD"
+        - "RSI"
+        - "BOLL"
+
+  # 基本面分析师
+  - name: "基本面分析师"
+    agent_type: "fundamentals_analyst"
+    enabled: true
+    weight: 0.30
+    params:
+      min_roe: 0.10
+      min_gross_margin: 0.30
+      max_debt_ratio: 0.70
+
+  # 风险分析师
+  - name: "风险分析师"
+    agent_type: "risk_analyst"
+    enabled: true
+    weight: 0.20
+    params:
+      days: 60
+      max_volatility: 0.50
+      max_drawdown: -0.30
+
+  # 情绪分析师
+  - name: "情绪分析师"
+    agent_type: "sentiment_analyst"
+    enabled: true
+    weight: 0.25
+    params:
+      days: 20
+
+# 报告合并配置
+merge_config:
+  # 决策阈值
+  thresholds:
+    buy: 75
+    hold: 60
+    watch: 40
+    sell: 0
+  
+  # 仓位建议
+  position_sizes:
+    buy: 0.20      # 20%
+    hold: 0.10     # 10%
+    watch: 0.05    # 5%
+    sell: 0        # 0%
+  
+  # 目标收益/止损
+  targets:
+    profit_target: 0.15    # 15% 目标收益
+    stop_loss: -0.08       # 8% 止损
+
+# 系统配置
+system:
+  # 默认分析周期
+  default_days: 60
+  # 最大风险显示数量
+  max_risks_display: 5
+  # 报告生成格式: markdown, html, json
+  report_format: "markdown"
