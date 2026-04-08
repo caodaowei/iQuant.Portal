@@ -26,7 +26,7 @@ ENV/
 env/
 .venv
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
@@ -36,24 +36,17 @@ env/
 # Environment variables
 .env
 .env.local
-.env.*.local
 
-# Logs
+# Data and logs
+data/
 logs/
 *.log
 
 # Database
 *.db
 *.sqlite
-
-# Docker
-.dockerignore
+*.sqlite3
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Project specific
-reports/*.html
-reports/*.pdf
-data/cache/

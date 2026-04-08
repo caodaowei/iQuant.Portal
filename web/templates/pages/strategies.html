@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}策略管理 - iQuant{% endblock %}
+
+{% set active_page = 'strategies' %}
+
+{% block content %}
+<div class="card">
+    <h2>🎯 择时策略</h2>
+    <div id="strategy-list">
+        <p>加载中...</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>⚡ 快速测试</h2>
+    <p>选择策略运行快速测试（使用模拟数据）</p>
+    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <select id="test-strategy" class="form-control" style="width: auto; min-width: 200px;">
+            <option value="MA_TREND">均线趋势策略 (MA_TREND)</option>
+            <option value="MACD_SIGNAL">MACD信号策略 (MACD_SIGNAL)</option>
+            <option value="RSI_MEAN_REVERT">RSI均值回归 (RSI_MEAN_REVERT)</option>
+            <option value="BOLL_BREAKOUT">布林带突破 (BOLL_BREAKOUT)</option>
+        </select>
+        <button class="btn" onclick="runStrategyTest()" id="test-btn">运行测试</button>
+    </div>
+    <div id="test-result" style="margin-top: 20px;"></div>
+</div>
+
+<div class="card">
+    <h2>📊 策略说明</h2>
+    <div class="grid grid-2">
+        <div>
+            <h3 style="color: #667eea; margin-bottom: 10px;">均线趋势策略 (MA_TREND)</h3>
+            <p style="color: #666; line-height: 1.6;">
+                基于双均线交叉产生交易信号。当短期均线上穿长期均线时产生买入信号，
+                当短期均线下穿长期均线时产生卖出信号。适用于趋势明显的市场。
+            </p>
+        </div>
+        <div>
+            <h3 style="color: #667eea; margin-bottom: 10px;">MACD信号策略 (MACD_SIGNAL)</h3>
+            <p style="color: #666; line-height: 1.6;">
+                使用MACD指标的DIF线和DEA线的交叉作为交易信号。
+                DIF上穿DEA为买入信号，DIF下穿DEA为卖出信号。适合捕捉中短期趋势。
+            </p>
+        </div>
+        <div>
+            <h3 style="color: #667eea; margin-bottom: 10px;">RSI均值回归 (RSI_MEAN_REVERT)</h3>
+            <p style="color: #666; line-height: 1.6;">
+                基于RSI超买超卖原理。RSI低于30视为超卖产生买入信号，
+                RSI高于70视为超买产生卖出信号。适用于震荡市场。
+            </p>
+        </div>
+        <div>
+            <h3 style="color: #667eea; margin-bottom: 10px;">布林带突破 (BOLL_BREAKOUT)</h3>
+            <p style="color: #666; line-height: 1.6;">
+                利用布林带上下轨的突破产生信号。价格突破上轨为买入信号，
+                突破下轨为卖出信号。适合波动较大的市场环境。
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStrategies();
+    });
+    
+    async function loadStrategies() {
+        try {
+            const response = await fetch('/api/strategies');
+            const data = await response.json();
+            
+            const container = document.getElementById('strategy-list');
+            
+            if (data.count === 0) {
+                container.innerHTML = '<p style="color: #666;">暂无策略</p>';
+                return;
+            }
+            
+            const cards = data.strategies.map(s => `
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="margin-bottom: 5px;">${s.name}</h3>
+                            <p style="color: #666; font-size: 0.9em;">代码: ${s.code}</p>
+                        </div>
+                        <span class="badge ${s.active ? 'badge-success' : 'badge-warning'}">
+                            ${s.active ? '✅ 激活' : '⏸️ 暂停'}
+                        </span>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="runStrategyTest('${s.code}')" style="padding: 5px 15px; font-size: 0.9em;">测试运行</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = cards;
+        } catch (error) {
+            document.getElementById('strategy-list').innerHTML = '<p style="color: #dc3545;">加载失败</p>';
+        }
+    }
+    
+    async function runStrategyTest(code) {
+        const strategyCode = code || document.getElementById('test-strategy').value;
+        const btn = document.getElementById('test-btn');
+        const resultEl = document.getElementById('test-result');
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 运行中...';
+        }
+        
+        resultEl.innerHTML = '<p>正在运行策略测试...</p>';
+        
+        try {
+            const response = await fetch(`/api/strategies/${strategyCode}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ days: 200 })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                resultEl.innerHTML = `<p style="color: #dc3545;">测试失败: ${data.error}</p>`;
+            } else {
+                resultEl.innerHTML = `
+                    <div style="background: #d4edda; padding: 20px; border-radius: 8px;">
+                        <h4 style="color: #155724; margin-bottom: 15px;">✅ 策略测试完成</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <strong>策略:</strong> ${data.strategy}
+                            </div>
+                            <div>
+                                <strong>信号数量:</strong> ${data.signal_count}
+                            </div>
+                            <div>
+                                <strong>最新信号:</strong> 
+                                <span style="color: ${data.latest_signal.type === 'buy' ? '#dc3545' : '#28a745'}; font-weight: bold;">
+                                    ${data.latest_signal.type === 'buy' ? '买入' : data.latest_signal.type === 'sell' ? '卖出' : data.latest_signal.type}
+                                </span>
+                            </div>
+                            <div>
+                                <strong>信号强度:</strong> ${(data.latest_signal.strength * 100).toFixed(1)}%
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #c3e6cb;">
+                            <strong>原因:</strong> ${data.latest_signal.reason}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            resultEl.innerHTML = `<p style="color: #dc3545;">测试失败: ${error.message}</p>`;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '运行测试';
+            }
+        }
+    }
+</script>
+{% endblock %}

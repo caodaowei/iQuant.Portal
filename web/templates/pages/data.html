@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}数据管理 - iQuant{% endblock %}
+
+{% set active_page = 'data' %}
+
+{% block content %}
+<div class="card">
+    <h2>🗄️ 数据同步</h2>
+    <p>从数据源同步股票数据到本地数据库</p>
+    <div class="grid grid-3" style="margin-top: 20px;">
+        <div class="card" style="text-align: center;">
+            <h3 style="margin-bottom: 15px;">📋 股票列表</h3>
+            <p style="color: #666; margin-bottom: 15px;">同步所有股票基础信息</p>
+            <button class="btn" onclick="syncData('stock_list')" id="btn-stock-list">开始同步</button>
+            <div id="result-stock-list" style="margin-top: 15px;"></div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <h3 style="margin-bottom: 15px;">📊 指数数据</h3>
+            <p style="color: #666; margin-bottom: 15px;">同步大盘指数数据</p>
+            <div class="form-group" style="text-align: left;">
+                <label>指数代码</label>
+                <input type="text" id="index-code" class="form-control" value="000001" placeholder="如: 000001">
+            </div>
+            <button class="btn" onclick="syncData('index')" id="btn-index">开始同步</button>
+            <div id="result-index" style="margin-top: 15px;"></div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <h3 style="margin-bottom: 15px;">📈 个股数据</h3>
+            <p style="color: #666; margin-bottom: 15px;">同步单只股票日线</p>
+            <div class="form-group" style="text-align: left;">
+                <label>股票代码</label>
+                <input type="text" id="stock-code" class="form-control" value="000001" placeholder="如: 000001">
+            </div>
+            <button class="btn" onclick="syncData('stock')" id="btn-stock">开始同步</button>
+            <div id="result-stock" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+    <div style="margin-top: 20px; text-align: center;">
+        <button class="btn btn-success" onclick="syncData('all')" id="btn-all" style="padding: 15px 40px; font-size: 1.1em;">
+            🚀 同步全部数据
+        </button>
+        <div id="result-all" style="margin-top: 15px;"></div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📋 数据库表</h2>
+    <div style="margin-bottom: 15px;">
+        <button class="btn" onclick="loadTables()">刷新</button>
+    </div>
+    <div id="tables-list">
+        <p>点击"刷新"加载数据...</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>ℹ️ 数据说明</h2>
+    <div style="color: #666; line-height: 1.8;">
+        <div class="grid grid-2">
+            <div>
+                <h4 style="color: #667eea; margin-bottom: 10px;">数据源</h4>
+                <ul style="margin-left: 20px;">
+                    <li><strong>Tushare:</strong> 专业财经数据接口</li>
+                    <li><strong>AkShare:</strong> 开源财经数据接口</li>
+                    <li><strong>本地数据库:</strong> PostgreSQL 存储</li>
+                </ul>
+            </div>
+            <div>
+                <h4 style="color: #667eea; margin-bottom: 10px;">数据类型</h4>
+                <ul style="margin-left: 20px;">
+                    <li><strong>股票基础数据:</strong> 股票代码、名称、行业等</li>
+                    <li><strong>日线数据:</strong> 开高低收、成交量等</li>
+                    <li><strong>指数数据:</strong> 大盘指数历史数据</li>
+                    <li><strong>财务数据:</strong> 财务报表数据</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTables();
+    });
+    
+    async function syncData(type) {
+        const btnId = 'btn-' + type;
+        const resultId = 'result-' + type;
+        const btn = document.getElementById(btnId);
+        const resultEl = document.getElementById(resultId);
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 同步中...';
+        }
+        
+        resultEl.innerHTML = '<p style="color: #666;">正在同步数据...</p>';
+        
+        try {
+            let body = { type: type };
+            
+            if (type === 'index') {
+                body.index_code = document.getElementById('index-code').value.trim();
+            } else if (type === 'stock') {
+                body.stock_code = document.getElementById('stock-code').value.trim();
+            }
+            
+            const response = await fetch('/api/data/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                resultEl.innerHTML = `<div style="color: #dc3545;">❌ 同步失败: ${data.error}</div>`;
+            } else {
+                if (type === 'all') {
+                    resultEl.innerHTML = `
+                        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px;">
+                            <h4 style="margin-bottom: 10px;">✅ 全部同步完成</h4>
+                            <pre style="background: rgba(255,255,255,0.5); padding: 10px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(data.results, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultEl.innerHTML = `
+                        <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px;">
+                            <strong>✅ 同步成功</strong><br>
+                            类型: ${data.type}<br>
+                            ${data.code ? `代码: ${data.code}<br>` : ''}
+                            数量: ${data.count} 条
+                        </div>
+                    `;
+                }
+                // 刷新表列表
+                loadTables();
+            }
+        } catch (error) {
+            resultEl.innerHTML = `<div style="color: #dc3545;">❌ 同步失败: ${error.message}</div>`;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = type === 'all' ? '🚀 同步全部数据' : '开始同步';
+            }
+        }
+    }
+    
+    async function loadTables() {
+        const container = document.getElementById('tables-list');
+        container.innerHTML = '<p>加载中...</p>';
+        
+        try {
+            const response = await fetch('/api/database/tables');
+            const data = await response.json();
+            
+            if (data.count === 0) {
+                container.innerHTML = '<p style="color: #666;">暂无数据表</p>';
+                return;
+            }
+            
+            const tableCategories = {
+                '基础数据': [],
+                '策略数据': [],
+                '交易数据': [],
+                '风控数据': [],
+                '其他': []
+            };
+            
+            data.tables.forEach(t => {
+                if (t.includes('stock') || t.includes('index')) {
+                    tableCategories['基础数据'].push(t);
+                } else if (t.includes('strategy') || t.includes('signal')) {
+                    tableCategories['策略数据'].push(t);
+                } else if (t.includes('trade') || t.includes('order') || t.includes('position') || t.includes('account')) {
+                    tableCategories['交易数据'].push(t);
+                } else if (t.includes('risk')) {
+                    tableCategories['风控数据'].push(t);
+                } else {
+                    tableCategories['其他'].push(t);
+                }
+            });
+            
+            let html = `<p style="margin-bottom: 15px;">共 <strong>${data.count}</strong> 张数据表</p>`;
+            
+            for (const [category, tables] of Object.entries(tableCategories)) {
+                if (tables.length > 0) {
+                    html += `
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">${category}</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                ${tables.map(t => `<span class="badge badge-info" style="font-size: 0.9em;">${t}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            container.innerHTML = html;
+        } catch (error) {
+            container.innerHTML = `<p style="color: #dc3545;">加载失败: ${error.message}</p>`;
+        }
+    }
+</script>
+{% endblock %}
