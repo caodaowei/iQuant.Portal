@@ -7,14 +7,10 @@ from loguru import logger
 
 from config.settings import settings
 from core.backtest_engine import BacktestEngine
+from core.cache import cache_manager
 from core.database import db
 from core.strategy_manager import StrategyManager
-from strategies.timing import (
-    BollingerStrategy,
-    MACDStrategy,
-    MATrendStrategy,
-    RSIStrategy,
-)
+from strategies.registry import get_strategy_or_default, list_strategies
 
 app = Flask(__name__)
 
@@ -82,13 +78,42 @@ def data_page():
 def api_status():
     """系统状态"""
     db_status = db.health_check()
-    
+    redis_status = cache_manager.health_check()
+
     return jsonify({
         "status": "ok" if db_status else "error",
         "database": "connected" if db_status else "disconnected",
+        "redis": "connected" if redis_status else "disconnected",
         "version": "0.1.0",
         "timestamp": datetime.now().isoformat(),
     })
+
+
+@app.route("/api/cache/stats")
+def api_cache_stats():
+    """获取缓存统计信息"""
+    stats = cache_manager.get_stats()
+    return jsonify(stats)
+
+
+@app.route("/api/cache/clear", methods=["POST"])
+def api_cache_clear():
+    """清除缓存"""
+    data = request.get_json() or {}
+    namespace = data.get("namespace")
+
+    if namespace:
+        count = cache_manager.clear_namespace(namespace)
+        return jsonify({"message": f"已清除 {namespace} 命名空间，删除 {count} 个键"})
+    else:
+        # 清除所有命名空间
+        namespaces = ["daily_data", "stock_list", "index_data", "ai_diagnosis", "backtest_result", "strategy_signal"]
+        total_count = 0
+        for ns in namespaces:
+            count = cache_manager.clear_namespace(ns)
+            total_count += count
+
+        return jsonify({"message": f"已清除所有缓存，共删除 {total_count} 个键"})
 
 
 @app.route("/api/strategies")
@@ -141,31 +166,33 @@ def api_run_strategy(code):
 
 @app.route("/api/backtest", methods=["POST"])
 def api_backtest():
-    """运行回测"""
+    """运行回测（带缓存）"""
     try:
         import pandas as pd
-        
+
         # 获取参数
         data = request.get_json() or {}
         strategy_code = data.get("strategy", "MA_TREND")
         days = data.get("days", 300)
         initial_capital = data.get("initial_capital", 1000000)
-        
+
+        # 生成缓存键
+        cache_key = f"{strategy_code}_{days}_{initial_capital}"
+
+        # 尝试从缓存获取
+        cached_result = cache_manager.get("backtest_result", cache_key)
+        if cached_result is not None:
+            logger.info(f"回测结果缓存命中: {cache_key}")
+            return jsonify(cached_result)
+
         # 生成示例数据
-        from tests.test_backtest import create_sample_market_data
+        from core.data_generator import create_sample_market_data
         market_data = create_sample_market_data(days)
-        
-        # 创建策略
-        strategy_map = {
-            "MA_TREND": MATrendStrategy,
-            "MACD_SIGNAL": MACDStrategy,
-            "RSI_MEAN_REVERT": RSIStrategy,
-            "BOLL_BREAKOUT": BollingerStrategy,
-        }
-        
-        strategy_class = strategy_map.get(strategy_code, MATrendStrategy)
+
+        # 创建策略（使用注册表）
+        strategy_class = get_strategy_or_default(strategy_code)
         strategy = strategy_class()
-        
+
         # 运行回测
         engine = BacktestEngine(
             initial_capital=initial_capital,
@@ -174,17 +201,17 @@ def api_backtest():
         )
         engine.set_strategy(strategy)
         engine.set_market_data(market_data)
-        
+
         results = engine.run()
-        
+
         # 生成图表
         from core.visualization import create_backtest_chart
         chart_json = create_backtest_chart(
             nav_data=results.get("nav_data", []),
             trades=results.get("trades", []),
         )
-        
-        return jsonify({
+
+        response_data = {
             "strategy": strategy_code,
             "initial_capital": results["initial_capital"],
             "final_capital": results["final_capital"],
@@ -196,7 +223,13 @@ def api_backtest():
             "start_date": str(results["start_date"]),
             "end_date": str(results["end_date"]),
             "chart": chart_json,
-        })
+        }
+
+        # 写入缓存（7天过期）
+        cache_manager.set("backtest_result", cache_key, response_data, ttl=604800)
+        logger.info(f"回测结果已缓存: {cache_key}")
+
+        return jsonify(response_data)
     
     except Exception as e:
         logger.error(f"回测失败: {e}")
@@ -614,4 +647,65 @@ th {{ background: #f5f5f5; }}
     
     except Exception as e:
         logger.error(f"生成报告失败: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ==================== 简单认证 API（用于本地测试）====================
+
+# 模拟用户数据库（仅用于测试）
+USERS_DB = {
+    "admin": {
+        "username": "admin",
+        "email": "admin@iquant.com",
+        "password": "admin123",
+        "role": "admin",
+    },
+    "trader1": {
+        "username": "trader1",
+        "email": "trader1@iquant.com",
+        "password": "trader123",
+        "role": "trader",
+    },
+}
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    """用户登录 API"""
+    try:
+        data = request.get_json() or {}
+        username = data.get("username") or data.get("email")
+        password = data.get("password")
+
+        if not username or not password:
+            return jsonify({"error": "请输入用户名和密码"}), 400
+
+        # 查找用户
+        user = None
+        for u in USERS_DB.values():
+            if (u["username"] == username or u["email"] == username) and u["password"] == password:
+                user = u
+                break
+
+        if not user:
+            return jsonify({"error": "用户名或密码错误"}), 401
+
+        # 返回简单的 token（实际生产环境应使用 JWT）
+        import base64
+        import time
+        token_data = f"{user['username']}:{user['role']}:{int(time.time())}"
+        token = base64.b64encode(token_data.encode()).decode()
+
+        return jsonify({
+            "success": True,
+            "token": token,
+            "user": {
+                "username": user["username"],
+                "email": user["email"],
+                "role": user["role"],
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"登录失败: {e}")
         return jsonify({"error": str(e)}), 500

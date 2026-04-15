@@ -9,6 +9,8 @@ from strategies.timing import (
     MACDStrategy,
     MATrendStrategy,
     RSIStrategy,
+    LinearRegressionStrategy,
+    SlopeVolumeStrategy,
     TimingSignal,
     TimingStrategy,
 )
@@ -26,6 +28,8 @@ class StrategyManager:
         "MACD_SIGNAL": MACDStrategy,
         "RSI_MEAN_REVERT": RSIStrategy,
         "BOLL_BREAKOUT": BollingerStrategy,
+        "LR_SLOPE": LinearRegressionStrategy,
+        "SLOPE_VOL": SlopeVolumeStrategy,
     }
     
     def __init__(self):

@@ -8,6 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
@@ -19,12 +20,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制应用代码
 COPY . .
 
-# 暴露端口
-EXPOSE 5000
+# 暴露端口（FastAPI 和 Flask）
+EXPOSE 8000 5000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/api/status || exit 1
+# 健康检查（默认检查 FastAPI）
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/api/status || exit 1
 
-# 启动命令
-CMD ["python", "web/app.py"]
+# 启动命令（由 docker-compose 覆盖）
+CMD ["uvicorn", "web.app_async:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -34,6 +34,10 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["config", "core", "strategies", "web", "tests"]
+include = ["*.py", "*.md", "*.txt", "*.sql", "*.yaml"]
+
 [tool.black]
 line-length = 100
 target-version = ['py39']

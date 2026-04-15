@@ -12,6 +12,8 @@ from datetime import datetime
 import json
 from loguru import logger
 
+from core.cache import cache_manager
+
 
 class SignalType(Enum):
     """信号类型"""
@@ -446,23 +448,29 @@ class MultiAgentSystem:
         self.manager = Manager()
     
     def diagnose(self, code: str) -> Dict:
-        """执行完整诊断流程"""
+        """执行完整诊断流程（带缓存）"""
         logger.info(f"开始多智能体诊断: {code}")
-        
+
+        # 尝试从缓存获取
+        cached_result = cache_manager.get("ai_diagnosis", code)
+        if cached_result is not None:
+            logger.info(f"AI 诊断缓存命中: {code}")
+            return cached_result
+
         # 阶段1: 分析师团队并行分析
         logger.info("阶段1: 分析师团队分析")
         market_report = self.market_analyst.analyze(code)
         fundamentals_report = self.fundamentals_analyst.analyze(code)
         news_report = self.news_analyst.analyze(code)
-        
+
         analyst_reports = [market_report, fundamentals_report, news_report]
-        
+
         # 阶段5: 基金经理最终决策
         logger.info("阶段5: 基金经理决策")
         context = {'analyst_reports': analyst_reports}
         final_report = self.manager.analyze(code, context)
         final_decision = self.manager.make_final_decision(code, context)
-        
+
         result = {
             'code': code,
             'stages': {
@@ -477,19 +485,15 @@ class MultiAgentSystem:
                 'final': final_report,
             }
         }
-        
-        logger.info(f"诊断完成: {code} -> {final_decision.decision.value}")
+
+        # 写入缓存（6小时过期）
+        cache_manager.set("ai_diagnosis", code, result, ttl=21600)
+        logger.info(f"诊断完成并缓存: {code} -> {final_decision.decision.value}")
         return result
-
-
-# 便捷函数
-def diagnose_stock(code: str) -> Dict:
-    """便捷诊断函数"""
-    system = MultiAgentSystem()
-    return system.diagnose(code)
 
 
 if __name__ == "__main__":
     # 测试
-    result = diagnose_stock("000001")
+    system = MultiAgentSystem()
+    result = system.diagnose("000001")
     print(json.dumps(result, indent=2, default=str))

@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     commission_rate: float = 0.00025
     slippage: float = 0.001
     
+    # 日志配置
+    log_file: str = "logs/iquant.log"
+    
+    # 回测配置
+    default_start_date: str = "2020-01-01"
+    default_end_date: str = "2024-12-31"
+    default_initial_capital: int = 1000000
+    
     class Config:
         env_file = CONFIG_DIR / ".env"
         env_file_encoding = "utf-8"

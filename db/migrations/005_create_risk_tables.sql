@@ -122,4 +122,4 @@ CREATE INDEX IF NOT EXISTS idx_risk_alerts_level ON risk_alerts(alert_level);
 CREATE INDEX IF NOT EXISTS idx_risk_alerts_resolved ON risk_alerts(is_resolved);
 CREATE INDEX IF NOT EXISTS idx_position_limits_type ON position_limits(limit_type);
 CREATE INDEX IF NOT EXISTS idx_trade_blacklist_code ON trade_blacklist(stock_code);
-CREATE INDEX IF NOT EXISTS idx_trade_blacklist_active ON trade_blacklist(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_trade_blacklist_permanent ON trade_blacklist(is_permanent);

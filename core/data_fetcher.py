@@ -1,12 +1,13 @@
 """数据获取模块 - 统一数据接口"""
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, List
 
 import pandas as pd
 from loguru import logger
 
 from config.settings import settings
+from core.cache import cache_manager
 
 
 class DataSource(ABC):
@@ -36,6 +37,10 @@ class DataSource(ABC):
     ) -> pd.DataFrame:
         """获取指数数据"""
         pass
+    
+    def get_realtime_quote(self, stock_code: str) -> Optional[Dict[str, any]]:
+        """获取实时行情（可选实现）"""
+        return None
 
 
 class TushareDataSource(DataSource):
@@ -174,6 +179,29 @@ class TushareDataSource(DataSource):
         except Exception as e:
             logger.error(f"获取指数数据失败 {index_code}: {e}")
             return pd.DataFrame()
+    
+    def get_realtime_quote(self, stock_code: str) -> Optional[Dict[str, any]]:
+        """获取实时行情（Tushare 实时接口）"""
+        try:
+            ts_code = self._convert_code(stock_code)
+            
+            # 使用 Tushare 实时行情接口
+            df = self.pro.rt_tick(ts_code=ts_code)
+            
+            if df is not None and not df.empty:
+                latest = df.iloc[-1]
+                return {
+                    "current_price": float(latest.get("price", 0)),
+                    "change": float(latest.get("change", 0)),
+                    "change_pct": float(latest.get("pct_chg", 0)),
+                    "volume": int(latest.get("vol", 0)),
+                    "amount": float(latest.get("amount", 0)),
+                }
+            
+            return None
+        except Exception as e:
+            logger.debug(f"Tushare 实时行情获取失败 {stock_code}: {e}")
+            return None
     
     def _convert_code(self, code: str) -> str:
         """转换为Tushare代码格式"""
@@ -357,23 +385,54 @@ class DataFetcher:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> pd.DataFrame:
-        """获取日线数据"""
+        """获取日线数据（带缓存）"""
         if self._primary_source is None:
             return pd.DataFrame()
-        
+
         # 默认日期范围
         if end_date is None:
             end_date = datetime.now().strftime("%Y-%m-%d")
         if start_date is None:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
-        
-        return self._primary_source.get_daily_data(stock_code, start_date, end_date)
+
+        # 生成缓存键
+        cache_key = f"{stock_code}_{start_date}_{end_date}"
+
+        # 尝试从缓存获取
+        cached_data = cache_manager.get_pickle("daily_data", cache_key)
+        if cached_data is not None:
+            logger.debug(f"缓存命中: {cache_key}")
+            return cached_data
+
+        # 从数据源获取
+        df = self._primary_source.get_daily_data(stock_code, start_date, end_date)
+
+        # 写入缓存（如果数据不为空）
+        if not df.empty:
+            cache_manager.set_pickle("daily_data", cache_key, df)
+            logger.debug(f"缓存写入: {cache_key}")
+
+        return df
     
     def get_stock_list(self) -> pd.DataFrame:
-        """获取股票列表"""
+        """获取股票列表（带缓存）"""
+        # 尝试从缓存获取
+        cached_data = cache_manager.get_pickle("stock_list", "all_stocks")
+        if cached_data is not None:
+            logger.debug("股票列表缓存命中")
+            return cached_data
+
         if self._primary_source is None:
             return pd.DataFrame()
-        return self._primary_source.get_stock_list()
+
+        df = self._primary_source.get_stock_list()
+
+        # 写入缓存
+        if not df.empty:
+            cache_manager.set_pickle("stock_list", "all_stocks", df)
+            logger.debug("股票列表已缓存")
+
+        return df
     
     def get_index_data(
         self,
@@ -381,16 +440,97 @@ class DataFetcher:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> pd.DataFrame:
-        """获取指数数据"""
+        """获取指数数据（带缓存）"""
         if self._primary_source is None:
             return pd.DataFrame()
-        
+
         if end_date is None:
             end_date = datetime.now().strftime("%Y-%m-%d")
         if start_date is None:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+
+        # 生成缓存键
+        cache_key = f"{index_code}_{start_date}_{end_date}"
+
+        # 尝试从缓存获取
+        cached_data = cache_manager.get_pickle("index_data", cache_key)
+        if cached_data is not None:
+            logger.debug(f"指数数据缓存命中: {cache_key}")
+            return cached_data
+
+        # 从数据源获取
+        df = self._primary_source.get_index_data(index_code, start_date, end_date)
+
+        # 写入缓存
+        if not df.empty:
+            cache_manager.set_pickle("index_data", cache_key, df)
+            logger.debug(f"指数数据已缓存: {cache_key}")
+
+        return df
+    
+    def get_realtime_quote(self, stock_code: str) -> Dict[str, any]:
+        """获取单只股票的实时行情
         
-        return self._primary_source.get_index_data(index_code, start_date, end_date)
+        Args:
+            stock_code: 股票代码，如 '000001.SZ'
+        
+        Returns:
+            包含 current_price, change, change_pct 等的字典
+        """
+        try:
+            # 优先从 Tushare 获取实时行情
+            if self._primary_source.source_type == "tushare":
+                quote = self._primary_source.get_realtime_quote(stock_code)
+                if quote:
+                    return quote
+            
+            # 降级：从缓存的最新日线数据获取
+            cache_key = f"{stock_code}_1d"
+            cached_df = cache_manager.get_pickle("daily_data", cache_key)
+            
+            if cached_df is not None and not cached_df.empty:
+                latest = cached_df.iloc[-1]
+                return {
+                    "current_price": float(latest.get("close_price", 0)),
+                    "change": 0,
+                    "change_pct": 0,
+                    "volume": int(latest.get("volume", 0)),
+                    "amount": float(latest.get("amount", 0)),
+                }
+            
+            # 最后降级：返回空
+            logger.warning(f"无法获取 {stock_code} 的实时行情")
+            return {
+                "current_price": 0,
+                "change": 0,
+                "change_pct": 0,
+                "volume": 0,
+                "amount": 0,
+            }
+            
+        except Exception as e:
+            logger.error(f"获取实时行情失败 {stock_code}: {e}")
+            return {
+                "current_price": 0,
+                "change": 0,
+                "change_pct": 0,
+                "volume": 0,
+                "amount": 0,
+            }
+    
+    def get_realtime_quotes(self, stock_codes: List[str]) -> Dict[str, Dict[str, any]]:
+        """批量获取多只股票的实时行情
+        
+        Args:
+            stock_codes: 股票代码列表
+        
+        Returns:
+            {stock_code: quote_dict} 字典
+        """
+        result = {}
+        for code in stock_codes:
+            result[code] = self.get_realtime_quote(code)
+        return result
 
 
 # 全局数据获取器实例

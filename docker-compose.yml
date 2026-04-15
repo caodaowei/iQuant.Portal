@@ -1,26 +1,115 @@
 version: '3.8'
 
 services:
-  iquant:
+  # FastAPI 异步应用（主应用）
+  iquant-fastapi:
     build: .
-    container_name: iquant-portal
+    container_name: iquant-fastapi
+    command: ["uvicorn", "web.app_async:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
-      - "5000:5000"
+      - "8000:8000"
     environment:
-      - FLASK_ENV=production
-      - DB_HOST=${DB_HOST:-localhost}
+      - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
       - DB_NAME=${DB_NAME:-iquant}
       - DB_USER=${DB_USER:-iquant}
-      - DB_PASSWORD=${DB_PASSWORD:-}
+      - DB_PASSWORD=${DB_PASSWORD:-iquant123}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     volumes:
       - ./config:/app/config:ro
       - ./logs:/app/logs
     restart: unless-stopped
     networks:
       - iquant-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
-  # 可选：PostgreSQL 数据库
+  # Flask 同步应用（可选，用于模板渲染页面）
+  iquant-flask:
+    build: .
+    container_name: iquant-flask
+    command: ["python", "web/app.py"]
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-iquant}
+      - DB_USER=${DB_USER:-iquant}
+      - DB_PASSWORD=${DB_PASSWORD:-iquant123}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - iquant-network
+    depends_on:
+      - postgres
+      - redis
+    profiles:
+      - flask  # 使用 profile 控制是否启动
+
+  # Celery Worker（异步任务处理）
+  celery-worker:
+    build: .
+    container_name: iquant-celery-worker
+    command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "--concurrency=4"]
+    environment:
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-iquant}
+      - DB_USER=${DB_USER:-iquant}
+      - DB_PASSWORD=${DB_PASSWORD:-iquant123}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - iquant-network
+    depends_on:
+      - postgres
+      - redis
+
+  # Celery Flower（Celery 监控面板）
+  flower:
+    build: .
+    container_name: iquant-flower
+    command: ["celery", "-A", "celery_worker.celery", "flower", "--port=5555", "--broker=redis://redis:6379/0"]
+    ports:
+      - "5555:5555"
+    environment:
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+    restart: unless-stopped
+    networks:
+      - iquant-network
+    depends_on:
+      - redis
+    profiles:
+      - monitoring
+
+  # PostgreSQL 数据库
   postgres:
     image: postgres:15-alpine
     container_name: iquant-postgres
@@ -31,10 +120,76 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     restart: unless-stopped
     networks:
       - iquant-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-iquant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - iquant-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus 监控
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: iquant-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - iquant-network
+    depends_on:
+      - iquant-fastapi
+    profiles:
+      - monitoring
+
+  # Grafana 可视化
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: iquant-grafana
+    ports:
+      - "3100:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3100
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    restart: unless-stopped
+    networks:
+      - iquant-network
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
 
 networks:
   iquant-network:
@@ -42,3 +197,6 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
