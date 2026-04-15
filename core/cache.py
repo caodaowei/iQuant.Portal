@@ -37,6 +37,7 @@ class CacheManager:
             redis_url: Redis 连接 URL，默认从配置读取
         """
         self.redis_url = redis_url or settings.redis_url
+        logger.info(f"使用Redis URL: {self.redis_url}")
         self.client: Optional[redis.Redis] = None
         self._stats = {
             "hits": 0,

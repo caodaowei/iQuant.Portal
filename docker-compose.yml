@@ -111,7 +111,7 @@ services:
 
   # PostgreSQL 数据库
   postgres:
-    image: postgres:15-alpine
+    image: postgres:18
     container_name: iquant-postgres
     environment:
       - POSTGRES_DB=${DB_NAME:-iquant}
@@ -132,7 +132,8 @@ services:
 
   # Redis 缓存
   redis:
-    image: redis:7-alpine
+    image: redis:8
+    container_name: iquant-redis
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data

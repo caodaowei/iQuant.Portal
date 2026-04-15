@@ -33,7 +33,14 @@ export const useUserStore = defineStore('user', () => {
       password: password,
     })
 
-    const { token: newToken, user: newUser } = response.data
+    // 处理后端返回的响应格式
+    const data = response.data
+    const newToken = data.token || data.access_token
+    const newUser = data.user
+
+    if (!newToken || !newUser) {
+      throw new Error('登录响应格式错误')
+    }
 
     token.value = newToken
     user.value = newUser

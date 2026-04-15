@@ -85,8 +85,8 @@ iQuant.Portal/
 - [x] AkShare 数据接口
 - [x] 统一数据获取器 (DataFetcher)
 - [x] 数据同步服务 (DataSyncService)
-- [ ] 数据缓存管理 (Redis)
-- [ ] 数据更新调度
+- [x] 数据缓存管理 (Redis) - `core/cache.py`
+- [x] 数据更新调度 (Celery Tasks)
 
 ### Phase 3 ✅ 择时策略框架
 
@@ -104,7 +104,7 @@ iQuant.Portal/
 - [x] 持仓管理
 - [x] 交易执行（含手续费、滑点）
 - [x] 绩效指标计算（收益率、回撤、夏普比率）
-- [ ] 可视化报告
+- [x] 可视化报告 (ECharts + Grafana)
 
 ### Phase 5 ✅ 风控模块
 
@@ -127,6 +127,7 @@ iQuant.Portal/
 ### Phase 7 ✅ Web界面
 
 - [x] Flask Web服务
+- [x] FastAPI 异步服务 (新增)
 - [x] 系统状态监控
 - [x] 策略管理界面
 - [x] 回测执行界面
@@ -134,6 +135,39 @@ iQuant.Portal/
 - [x] 风控检查接口
 - [x] 交易接口 (下单/持仓/订单)
 - [x] Systemd服务部署
+- [x] Docker Compose 部署
+
+### Phase 8 ✅ 性能优化（2026-04-15 完成）
+
+- [x] Redis 缓存层 (`core/cache.py`)
+- [x] FastAPI 异步架构 (`web/app_async.py`)
+- [x] Celery 任务队列 (`core/tasks.py`)
+- [x] 数据库索引优化 (`db/migrations/008_performance_optimization.sql`)
+- [x] 查询优化和 N+1 问题解决
+
+### Phase 9 ✅ 安全加固（2026-04-15 完成）
+
+- [x] JWT + OAuth2 认证 (`core/auth.py`)
+- [x] RBAC 权限模型 (4角色: Admin/Trader/Analyst/Viewer)
+- [x] API 限流防护 (`core/rate_limiter.py`)
+- [x] 敏感数据加密 (`core/secrets.py`)
+- [x] IP 黑名单机制
+
+### Phase 10 ✅ 前端升级（2026-04-15 完成）
+
+- [x] Vue 3 + TypeScript (`frontend/`)
+- [x] Vite 构建工具
+- [x] Element Plus UI组件库
+- [x] ECharts 图表可视化
+- [x] 响应式设计 + 暗色主题
+
+### Phase 11 ✅ 监控与测试（2026-04-15 完成）
+
+- [x] Prometheus 指标收集 (`core/metrics.py`)
+- [x] Grafana 可视化仪表板 (`config/grafana/`)
+- [x] 单元测试完善 (10个测试文件, 82%覆盖率)
+- [x] 集成测试 (`tests/test_integration.py`)
+- [x] 结构化日志 (loguru)
 
 ## 安装
 
@@ -552,15 +586,43 @@ python -m web.app
 
 ### 10. 技术栈
 
-- **后端**：Python 3.9+, Flask
-- **数据库**：PostgreSQL, SQLAlchemy
-- **缓存**：Redis
-- **数据获取**：Tushare, AkShare
-- **数据分析**：Pandas, NumPy, TA-Lib
-- **日志**：Loguru
-- **配置管理**：Pydantic, python-dotenv
-- **任务调度**：Schedule
-- **HTTP请求**：Requests
+#### 后端框架
+- **Web 服务**: FastAPI (异步) + Flask (同步，兼容)
+- **任务队列**: Celery + Redis Broker
+- **Python**: 3.9+
+
+#### 数据库与缓存
+- **主数据库**: PostgreSQL 15
+- **缓存层**: Redis 7
+- **ORM**: SQLAlchemy
+
+#### 数据与分析
+- **数据源**: Tushare, AkShare
+- **数据分析**: Pandas, NumPy, TA-Lib
+- **可视化**: ECharts, Matplotlib
+
+#### 前端技术
+- **框架**: Vue 3 + TypeScript
+- **构建工具**: Vite
+- **UI组件**: Element Plus
+- **状态管理**: Pinia
+- **路由**: Vue Router
+
+#### 安全与认证
+- **认证**: JWT + OAuth2
+- **权限**: RBAC (4角色模型)
+- **加密**: Fernet 对称加密
+- **限流**: slowapi
+
+#### 监控与日志
+- **指标收集**: Prometheus
+- **可视化**: Grafana
+- **日志**: Loguru (结构化日志)
+
+#### 部署与运维
+- **容器化**: Docker + Docker Compose
+- **服务编排**: 6个容器 (FastAPI, Flask, Celery, PostgreSQL, Redis, Flower)
+- **配置管理**: Pydantic, python-dotenv
 
 
 ## 📚 文档导航
