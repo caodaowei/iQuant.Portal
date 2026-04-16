@@ -83,6 +83,7 @@ class CacheManager:
             缓存的值，不存在或过期返回 None
         """
         if not self.client:
+            self._stats["misses"] += 1
             return None
 
         try:
@@ -154,6 +155,7 @@ class CacheManager:
             缓存的值，不存在或过期返回 None
         """
         if not self.client:
+            self._stats["misses"] += 1
             return None
 
         try:

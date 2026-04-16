@@ -3,8 +3,27 @@
     <!-- 顶部：账户选择器 -->
     <el-card class="account-selector-card" shadow="never">
       <div class="account-selector">
+        <!-- 账户不多时使用多选卡片 -->
+        <div v-if="accounts.length < 5" class="account-cards">
+          <div
+            v-for="account in accounts"
+            :key="account.id"
+            class="account-card"
+            :class="{ active: selectedAccountIds.includes(account.id) }"
+            @click="toggleAccountSelection(account.id)"
+          >
+            <div class="account-name">{{ account.account_name }}</div>
+            <div class="account-balance">¥{{ formatNumber(account.total_capital) }}</div>
+            <div class="account-status" v-if="selectedAccountIds.includes(account.id)">
+              <el-icon><Check /></el-icon>
+            </div>
+          </div>
+        </div>
+        <!-- 账户较多时使用下拉选择 -->
         <el-select
-          v-model="selectedAccountId"
+          v-else
+          v-model="selectedAccountIds"
+          multiple
           placeholder="选择账户"
           @change="onAccountChange"
           style="width: 300px"
@@ -21,11 +40,95 @@
             </span>
           </el-option>
         </el-select>
-        <el-button type="primary" :icon="Refresh" @click="refreshAllData" :loading="loading">
-          刷新
-        </el-button>
+        <div class="account-actions">
+          <el-button type="primary" :icon="Refresh" @click="refreshAllData" :loading="loading">
+            刷新
+          </el-button>
+          <el-button type="success" @click="openAddAccountDialog">
+            <el-icon><Plus /></el-icon>
+            添加账户
+          </el-button>
+          <el-dropdown @command="handleAccountAction">
+            <el-button type="info">
+              账户管理
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="edit">编辑当前账户</el-dropdown-item>
+                <el-dropdown-item command="delete" type="danger">删除当前账户</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </div>
     </el-card>
+
+    <!-- 添加账户弹窗 -->
+    <el-dialog
+      v-model="addAccountDialogVisible"
+      title="添加交易账户"
+      width="400px"
+    >
+      <el-form :model="addAccountForm" :rules="addAccountRules" ref="addAccountFormRef">
+        <el-form-item label="账户名称" prop="account_name">
+          <el-input v-model="addAccountForm.account_name" placeholder="请输入账户名称" />
+        </el-form-item>
+        <el-form-item label="账户类型" prop="account_type">
+          <el-select v-model="addAccountForm.account_type" placeholder="请选择账户类型">
+            <el-option label="模拟账户" value="simulation" />
+            <el-option label="实盘账户" value="real" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="初始资金" prop="initial_capital">
+          <el-input-number
+            v-model="addAccountForm.initial_capital"
+            :min="1000"
+            :max="10000000"
+            :step="1000"
+            placeholder="请输入初始资金"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="addAccountForm.is_default">设为默认账户</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addAccountDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleAddAccount">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑账户弹窗 -->
+    <el-dialog
+      v-model="editAccountDialogVisible"
+      title="编辑交易账户"
+      width="400px"
+    >
+      <el-form :model="editAccountForm" :rules="editAccountRules" ref="editAccountFormRef">
+        <el-form-item label="账户名称" prop="account_name">
+          <el-input v-model="editAccountForm.account_name" placeholder="请输入账户名称" />
+        </el-form-item>
+        <el-form-item label="账户类型" prop="account_type">
+          <el-select v-model="editAccountForm.account_type" placeholder="请选择账户类型">
+            <el-option label="模拟账户" value="simulation" />
+            <el-option label="实盘账户" value="real" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-checkbox v-model="editAccountForm.is_default">设为默认账户</el-checkbox>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editAccountDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleUpdateAccount">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- 关键指标卡片 -->
     <el-row :gutter="20" class="metrics-row">
@@ -262,19 +365,62 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Refresh, Plus, ArrowDown, Check } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { ledgerApi, type LedgerAccount, type PositionWithQuote, type TradeRecord, type AssetHistory, type PnlStatistics, type PnlByStock, type DailyPnl } from '@/api'
 
 // 状态管理
 const selectedAccountId = ref<number>(1)
+const selectedAccountIds = ref<number[]>([])
 const activeTab = ref('positions')
 const loading = ref(false)
 const positionsLoading = ref(false)
 const tradesLoading = ref(false)
 const assetHistoryLoading = ref(false)
 const pnlLoading = ref(false)
+
+// 账号管理相关状态
+const addAccountDialogVisible = ref(false)
+const editAccountDialogVisible = ref(false)
+const addAccountForm = ref({
+  account_name: '',
+  account_type: 'simulation',
+  initial_capital: 100000,
+  is_default: false
+})
+const editAccountForm = ref({
+  account_name: '',
+  account_type: 'simulation',
+  is_default: false
+})
+const addAccountFormRef = ref()
+const editAccountFormRef = ref()
+
+// 表单验证规则
+const addAccountRules = {
+  account_name: [
+    { required: true, message: '请输入账户名称', trigger: 'blur' },
+    { min: 2, max: 20, message: '账户名称长度在 2 到 20 个字符', trigger: 'blur' }
+  ],
+  account_type: [
+    { required: true, message: '请选择账户类型', trigger: 'change' }
+  ],
+  initial_capital: [
+    { required: true, message: '请输入初始资金', trigger: 'blur' },
+    { type: 'number', min: 1000, message: '初始资金至少为 1000 元', trigger: 'blur' }
+  ]
+}
+
+const editAccountRules = {
+  account_name: [
+    { required: true, message: '请输入账户名称', trigger: 'blur' },
+    { min: 2, max: 20, message: '账户名称长度在 2 到 20 个字符', trigger: 'blur' }
+  ],
+  account_type: [
+    { required: true, message: '请选择账户类型', trigger: 'change' }
+  ]
+}
 
 // 数据
 const accounts = ref<LedgerAccount[]>([])
@@ -318,27 +464,221 @@ const formatDateTime = (datetime: string) => {
 const loadAccounts = async () => {
   try {
     const res = await ledgerApi.getAccounts()
-    accounts.value = res.data.accounts
-    if (accounts.value.length > 0 && !currentAccount.value) {
-      const defaultAccount = accounts.value.find(a => a.is_default) || accounts.value[0]
-      selectedAccountId.value = defaultAccount.id
-      currentAccount.value = defaultAccount
+    // 排序：实盘账户排在前面，模拟账户排在后面
+    accounts.value = res.accounts.sort((a, b) => {
+      if (a.account_type === 'real' && b.account_type !== 'real') {
+        return -1
+      } else if (a.account_type !== 'real' && b.account_type === 'real') {
+        return 1
+      } else {
+        return 0
+      }
+    })
+    if (accounts.value.length > 0) {
+      // 尝试从 localStorage 中读取之前的选择
+      let savedSelectedIds: number[] = []
+      try {
+        const saved = localStorage.getItem('selectedAccountIds')
+        if (saved) {
+          savedSelectedIds = JSON.parse(saved)
+        }
+      } catch (e) {
+        console.error('读取保存的账户选择失败', e)
+      }
+      
+      // 过滤出有效的账户 ID
+      const validSelectedIds = savedSelectedIds.filter(id => 
+        accounts.value.some(account => account.id === id)
+      )
+      
+      if (validSelectedIds.length > 0) {
+        // 使用保存的选择
+        selectedAccountIds.value = validSelectedIds
+        // 使用第一个选中的账户作为当前账户
+        const firstSelectedAccount = accounts.value.find(a => a.id === validSelectedIds[0])
+        if (firstSelectedAccount) {
+          currentAccount.value = firstSelectedAccount
+        } else {
+          currentAccount.value = accounts.value[0]
+        }
+      } else {
+        // 没有保存的选择，使用默认账户
+        const defaultAccount = accounts.value.find(a => a.is_default) || accounts.value[0]
+        selectedAccountIds.value = [defaultAccount.id]
+        currentAccount.value = defaultAccount
+      }
+      
+      // 保存选择到 localStorage
+      localStorage.setItem('selectedAccountIds', JSON.stringify(selectedAccountIds.value))
+      
       await refreshAllData()
+    } else {
+      // 账户列表为空，重置状态
+      selectedAccountIds.value = []
+      currentAccount.value = null
+      ElMessage.warning('暂无交易账户，请添加账户')
     }
   } catch (error) {
     ElMessage.error('获取账户列表失败')
+    // 出错时重置状态
+    selectedAccountIds.value = []
+    currentAccount.value = null
+  }
+}
+
+// 打开添加账户弹窗
+const openAddAccountDialog = () => {
+  // 重置表单
+  addAccountForm.value = {
+    account_name: '',
+    account_type: 'simulation',
+    initial_capital: 100000,
+    is_default: false
+  }
+  addAccountDialogVisible.value = true
+}
+
+// 处理添加账户
+const handleAddAccount = async () => {
+  // 表单验证
+  if (!addAccountFormRef.value) return
+  await addAccountFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await ledgerApi.addAccount(addAccountForm.value)
+        ElMessage.success('账户添加成功')
+        addAccountDialogVisible.value = false
+        await loadAccounts()
+      } catch (error) {
+        ElMessage.error('添加账户失败')
+      }
+    }
+  })
+}
+
+// 处理账户操作
+const handleAccountAction = async (command) => {
+  if (command === 'edit') {
+    await openEditAccountDialog()
+  } else if (command === 'delete') {
+    await handleDeleteAccount()
+  }
+}
+
+// 打开编辑账户弹窗
+const openEditAccountDialog = async () => {
+  if (!currentAccount.value) return
+  
+  // 填充表单数据
+  editAccountForm.value = {
+    account_name: currentAccount.value.account_name,
+    account_type: currentAccount.value.account_type,
+    is_default: currentAccount.value.is_default
+  }
+  editAccountDialogVisible.value = true
+}
+
+// 处理更新账户
+const handleUpdateAccount = async () => {
+  if (!currentAccount.value) return
+  
+  // 表单验证
+  if (!editAccountFormRef.value) return
+  await editAccountFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await ledgerApi.updateAccount(currentAccount.value.id, editAccountForm.value)
+        ElMessage.success('账户更新成功')
+        editAccountDialogVisible.value = false
+        await loadAccounts()
+      } catch (error) {
+        ElMessage.error('更新账户失败')
+      }
+    }
+  })
+}
+
+// 处理删除账户
+const handleDeleteAccount = async () => {
+  if (!currentAccount.value) return
+  
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除当前账户吗？删除后将无法恢复。',
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await ledgerApi.deleteAccount(currentAccount.value.id)
+    ElMessage.success('账户删除成功')
+    await loadAccounts()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除账户失败')
+    }
   }
 }
 
 // 账户切换
-const onAccountChange = async (accountId: number) => {
-  currentAccount.value = accounts.value.find(a => a.id === accountId) || null
-  await refreshAllData()
+const onAccountChange = async (accountIds: number[]) => {
+  if (accountIds.length === 0) {
+    // 没有选择任何账户，重置状态
+    currentAccount.value = null
+    ElMessage.warning('请选择至少一个账户')
+  } else {
+    // 使用第一个选中的账户作为当前账户
+    const account = accounts.value.find(a => a.id === accountIds[0])
+    if (account) {
+      currentAccount.value = account
+      // 保存选择到 localStorage
+      localStorage.setItem('selectedAccountIds', JSON.stringify(accountIds))
+      await refreshAllData()
+    } else {
+      ElMessage.error('选择的账户不存在')
+      // 重置为默认账户
+      if (accounts.value.length > 0) {
+        const defaultAccount = accounts.value.find(a => a.is_default) || accounts.value[0]
+        selectedAccountIds.value = [defaultAccount.id]
+        // 保存选择到 localStorage
+        localStorage.setItem('selectedAccountIds', JSON.stringify(selectedAccountIds.value))
+        currentAccount.value = defaultAccount
+        await refreshAllData()
+      } else {
+        selectedAccountIds.value = []
+        // 保存选择到 localStorage
+        localStorage.setItem('selectedAccountIds', JSON.stringify(selectedAccountIds.value))
+        currentAccount.value = null
+      }
+    }
+  }
+}
+
+// 切换账户选择（用于卡片点击）
+const toggleAccountSelection = (accountId: number) => {
+  const index = selectedAccountIds.value.indexOf(accountId)
+  if (index > -1) {
+    // 已选中，取消选择
+    selectedAccountIds.value.splice(index, 1)
+  } else {
+    // 未选中，添加选择
+    selectedAccountIds.value.push(accountId)
+  }
+  // 保存选择到 localStorage
+  localStorage.setItem('selectedAccountIds', JSON.stringify(selectedAccountIds.value))
+  // 触发账户变更
+  onAccountChange(selectedAccountIds.value)
 }
 
 // 刷新所有数据
 const refreshAllData = async () => {
-  if (!selectedAccountId.value) return
+  if (selectedAccountIds.value.length === 0 || !currentAccount.value) {
+    ElMessage.warning('请先选择一个账户')
+    return
+  }
   
   loading.value = true
   try {
@@ -348,6 +688,8 @@ const refreshAllData = async () => {
       loadAssetHistory(),
       loadPnlSummary(),
     ])
+  } catch (error) {
+    ElMessage.error('刷新数据失败')
   } finally {
     loading.value = false
   }
@@ -370,11 +712,16 @@ const onTabChange = async (tabName: string) => {
 const loadPositions = async () => {
   positionsLoading.value = true
   try {
-    const res = await ledgerApi.getPositions(selectedAccountId.value)
-    positions.value = res.data.positions
+    if (selectedAccountIds.value.length === 0) {
+      ElMessage.warning('请先选择一个账户')
+      return
+    }
+    const res = await ledgerApi.getPositions(selectedAccountIds.value[0])
+    positions.value = res.positions
     await nextTick()
     renderPositionPieChart()
   } catch (error) {
+    console.error('获取持仓失败:', error)
     ElMessage.error('获取持仓失败')
   } finally {
     positionsLoading.value = false
@@ -385,8 +732,12 @@ const loadPositions = async () => {
 const loadTradeHistory = async () => {
   tradesLoading.value = true
   try {
+    if (selectedAccountIds.value.length === 0) {
+      ElMessage.warning('请先选择一个账户')
+      return
+    }
     const params: any = {
-      account_id: selectedAccountId.value,
+      account_id: selectedAccountIds.value[0],
       limit: tradePageSize.value,
       offset: (tradePage.value - 1) * tradePageSize.value,
     }
@@ -401,12 +752,13 @@ const loadTradeHistory = async () => {
     }
     
     const res = await ledgerApi.getTradeHistory(params)
-    trades.value = res.data.trades
-    tradeTotal.value = res.data.total
+    trades.value = res.trades
+    tradeTotal.value = res.total
     
     await nextTick()
     loadDailyPnlForChart()
   } catch (error) {
+    console.error('获取交易历史失败:', error)
     ElMessage.error('获取交易历史失败')
   } finally {
     tradesLoading.value = false
@@ -417,11 +769,16 @@ const loadTradeHistory = async () => {
 const loadAssetHistory = async () => {
   assetHistoryLoading.value = true
   try {
-    const res = await ledgerApi.getAssetHistory(selectedAccountId.value, assetDays.value)
-    assetHistory.value = res.data.history
+    if (selectedAccountIds.value.length === 0) {
+      ElMessage.warning('请先选择一个账户')
+      return
+    }
+    const res = await ledgerApi.getAssetHistory(selectedAccountIds.value[0], assetDays.value)
+    assetHistory.value = res.history
     await nextTick()
     renderAssetChart()
   } catch (error) {
+    console.error('获取资产历史失败:', error)
     ElMessage.error('获取资产历史失败')
   } finally {
     assetHistoryLoading.value = false
@@ -432,19 +789,24 @@ const loadAssetHistory = async () => {
 const loadPnlSummary = async () => {
   pnlLoading.value = true
   try {
+    if (selectedAccountIds.value.length === 0) {
+      ElMessage.warning('请先选择一个账户')
+      return
+    }
     const [statsRes, byStockRes, dailyRes] = await Promise.all([
-      ledgerApi.getPnlSummary(selectedAccountId.value),
-      ledgerApi.getPnlByStock(selectedAccountId.value),
-      ledgerApi.getDailyPnl(selectedAccountId.value, 30),
+      ledgerApi.getPnlSummary(selectedAccountIds.value[0]),
+      ledgerApi.getPnlByStock(selectedAccountIds.value[0]),
+      ledgerApi.getDailyPnl(selectedAccountIds.value[0], 30),
     ])
     
-    pnlStats.value = statsRes.data
-    pnlByStock.value = byStockRes.data.pnl_by_stock
-    dailyPnlData.value = dailyRes.data.daily_pnl
+    pnlStats.value = statsRes
+    pnlByStock.value = byStockRes.pnl_by_stock
+    dailyPnlData.value = dailyRes.daily_pnl
     
     await nextTick()
     renderDailyPnlChart()
   } catch (error) {
+    console.error('获取盈亏统计失败:', error)
     ElMessage.error('获取盈亏统计失败')
   } finally {
     pnlLoading.value = false
@@ -454,12 +816,15 @@ const loadPnlSummary = async () => {
 // 加载每日盈亏数据用于图表
 const loadDailyPnlForChart = async () => {
   try {
-    const res = await ledgerApi.getDailyPnl(selectedAccountId.value, 30)
-    dailyPnlData.value = res.data.daily_pnl
+    if (selectedAccountIds.value.length === 0) {
+      return
+    }
+    const res = await ledgerApi.getDailyPnl(selectedAccountIds.value[0], 30)
+    dailyPnlData.value = res.daily_pnl
     await nextTick()
     renderDailyPnlChart()
   } catch (error) {
-    console.error('加载每日盈亏失败', error)
+    console.error('加载每日盈亏失败:', error)
   }
 }
 
@@ -662,6 +1027,61 @@ onUnmounted(() => {
   align-items: center;
 }
 
+.account-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.account-cards {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.account-card {
+  padding: 15px 20px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 150px;
+  text-align: center;
+  position: relative;
+}
+
+.account-card:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.account-card.active {
+  border-color: #409eff;
+  background-color: #ecf5ff;
+  box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.2);
+}
+
+.account-name {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #303133;
+}
+
+.account-balance {
+  font-size: 14px;
+  color: #606266;
+}
+
+.account-status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #409eff;
+  font-size: 16px;
+}
+
 .metrics-row {
   margin-bottom: 20px;
 }
@@ -690,11 +1110,11 @@ onUnmounted(() => {
 }
 
 .metric-value.profit {
-  color: #67c23a;
+  color: #e74c3c;
 }
 
 .metric-value.loss {
-  color: #f56c6c;
+  color: #27ae60;
 }
 
 .tab-card {
@@ -706,12 +1126,12 @@ onUnmounted(() => {
 }
 
 .text-profit {
-  color: #67c23a;
+  color: #e74c3c;
   font-weight: bold;
 }
 
 .text-loss {
-  color: #f56c6c;
+  color: #27ae60;
   font-weight: bold;
 }
 </style>

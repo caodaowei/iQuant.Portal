@@ -129,6 +129,7 @@ export interface LedgerAccount {
   total_pnl: number
   status: string
   is_default: boolean
+  created_at?: string
 }
 
 export interface PositionWithQuote {
@@ -212,6 +213,30 @@ export const ledgerApi = {
   // 获取账户详情
   getAccount(accountId: number) {
     return request.get<LedgerAccount>(`/ledger/account/${accountId}`)
+  },
+
+  // 添加账户
+  addAccount(data: {
+    account_name: string
+    account_type: string
+    initial_capital: number
+    is_default?: boolean
+  }) {
+    return request.post('/ledger/accounts', data)
+  },
+
+  // 更新账户
+  updateAccount(accountId: number, data: {
+    account_name?: string
+    account_type?: string
+    is_default?: boolean
+  }) {
+    return request.put(`/ledger/accounts/${accountId}`, data)
+  },
+
+  // 删除账户
+  deleteAccount(accountId: number) {
+    return request.delete(`/ledger/accounts/${accountId}`)
   },
 
   // 获取持仓列表

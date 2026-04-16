@@ -35,6 +35,7 @@
           </el-icon>
         </div>
         <div class="header-right">
+          <ThemeSelector />
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-icon><User /></el-icon>
@@ -69,6 +70,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { Fold, Expand, User } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import ThemeSelector from '@/components/ThemeSelector.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -166,6 +168,7 @@ const handleCommand = async (command: string) => {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
 
 .user-info {

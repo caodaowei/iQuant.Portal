@@ -1,7 +1,7 @@
 """投资账本 API 路由"""
 from typing import Optional
 
-from fastapi import APIRouter, Query, HTTPException, Path
+from fastapi import APIRouter, Query, HTTPException, Path, Body
 from loguru import logger
 
 from core.ledger_service import get_ledger_service
@@ -36,6 +36,63 @@ async def get_account(account_id: int):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"获取账户详情失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/accounts")
+async def create_account(
+    account_name: str = Body(..., description="账户名称"),
+    account_type: str = Body(..., description="账户类型"),
+    initial_capital: float = Body(..., description="初始资金"),
+    is_default: bool = Body(False, description="是否默认账户"),
+):
+    """创建新交易账户"""
+    try:
+        account = ledger_service.create_account(
+            account_name=account_name,
+            account_type=account_type,
+            initial_capital=initial_capital,
+            is_default=is_default,
+        )
+        return account
+    except Exception as e:
+        logger.error(f"创建账户失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/accounts/{account_id}")
+async def update_account(
+    account_id: int,
+    account_name: Optional[str] = Body(None, description="账户名称"),
+    account_type: Optional[str] = Body(None, description="账户类型"),
+    is_default: Optional[bool] = Body(None, description="是否默认账户"),
+):
+    """更新账户信息"""
+    try:
+        account = ledger_service.update_account(
+            account_id=account_id,
+            account_name=account_name,
+            account_type=account_type,
+            is_default=is_default,
+        )
+        return account
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"更新账户失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/accounts/{account_id}")
+async def delete_account(account_id: int):
+    """删除交易账户"""
+    try:
+        ledger_service.delete_account(account_id)
+        return {"message": "账户删除成功"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"删除账户失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

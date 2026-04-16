@@ -221,7 +221,8 @@ const getStatusType = (status: string) => {
 const loadAccounts = async () => {
   try {
     const response = await ledgerApi.getAccounts();
-    accounts.value = response.accounts;
+    // 只显示模拟账号
+    accounts.value = response.accounts.filter(account => account.account_type === 'simulation');
     if (accounts.value.length > 0 && !selectedAccountId.value) {
       selectedAccountId.value = accounts.value[0].id;
       loadAccountData();
@@ -232,7 +233,10 @@ const loadAccounts = async () => {
 };
 
 const loadAccountData = async () => {
-  if (!selectedAccountId.value) return;
+  if (!selectedAccountId.value) {
+    ElMessage.warning("请先选择一个账户");
+    return;
+  }
 
   try {
     // 加载账户详情
@@ -248,6 +252,7 @@ const loadAccountData = async () => {
     // 加载订单历史（这里暂时使用mock数据，因为后端可能未实现）
     loadMockOrders();
   } catch (error) {
+    console.error('加载账户数据失败:', error);
     ElMessage.error("加载账户数据失败");
   }
 };
@@ -342,10 +347,10 @@ watch(selectedAccountId, () => {
 }
 
 .positive {
-  color: #67c23a;
+  color: #e74c3c;
 }
 
 .negative {
-  color: #f56c6c;
+  color: #27ae60;
 }
 </style>

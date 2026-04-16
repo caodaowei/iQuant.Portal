@@ -242,7 +242,8 @@ const totalPnlRate = computed(() => {
 const loadAccounts = async () => {
   try {
     const response = await ledgerApi.getAccounts();
-    accounts.value = response.accounts;
+    // 只显示实盘账号
+    accounts.value = response.accounts.filter(account => account.account_type === 'real');
     if (accounts.value.length > 0 && !selectedAccountId.value) {
       selectedAccountId.value = accounts.value[0].id;
       loadPositions();
@@ -253,13 +254,17 @@ const loadAccounts = async () => {
 };
 
 const loadPositions = async () => {
-  if (!selectedAccountId.value) return;
+  if (!selectedAccountId.value) {
+    ElMessage.warning("请先选择一个账户");
+    return;
+  }
 
   loading.value = true;
   try {
     const response = await ledgerApi.getPositions(selectedAccountId.value);
     positions.value = response.positions;
   } catch (error) {
+    console.error('加载持仓数据失败:', error);
     ElMessage.error("加载持仓数据失败");
   } finally {
     loading.value = false;
@@ -310,12 +315,12 @@ onMounted(() => {
 }
 
 .positive {
-  color: #67c23a;
+  color: #e74c3c;
   font-weight: bold;
 }
 
 .negative {
-  color: #f56c6c;
+  color: #27ae60;
   font-weight: bold;
 }
 </style>

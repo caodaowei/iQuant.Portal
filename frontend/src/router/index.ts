@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Data.vue'),
         meta: { title: '数据管理', icon: 'Database' },
       },
+      {
+        path: 'ledger',
+        name: 'InvestmentLedger',
+        component: () => import('@/views/InvestmentLedger.vue'),
+        meta: { title: '投资账本', icon: 'Money' },
+      },
     ],
   },
 ]

@@ -1,7 +1,9 @@
 """FastAPI 异步 Web 应用"""
+from web.routes_ledger import router as ledger_router
 import time
 from datetime import datetime
 from typing import List, Optional
+from pathlib import Path
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,6 +36,43 @@ from core.metrics import (
 from strategies.registry import get_strategy_or_default, list_strategies
 from web.routes_auth import router as auth_router
 
+
+def run_migrations():
+    """执行数据库迁移"""
+    logger.info("开始执行数据库迁移...")
+
+    migration_dir = Path(__file__).parent.parent / "db" / "migrations"
+    migration_files = sorted(migration_dir.glob("*.sql"))
+
+    for migration_file in migration_files:
+        logger.info(f"执行迁移文件: {migration_file.name}")
+        try:
+            with open(migration_file, 'r', encoding='utf-8') as f:
+                sql_content = f.read()
+
+            # 执行SQL语句，按分号分割
+            statements = sql_content.split(';')
+            for statement in statements:
+                statement = statement.strip()
+                if statement:
+                    try:
+                        db.execute(statement)
+                    except Exception as e:
+                        # 忽略已存在的表和索引错误
+                        if "already exists" in str(e):
+                            logger.debug(f"忽略已存在的对象: {e}")
+                        else:
+                            raise
+
+            logger.info(f"✅ 成功执行: {migration_file.name}")
+        except Exception as e:
+            logger.error(f"❌ 执行迁移文件 {migration_file.name} 失败: {e}")
+            return False
+
+    logger.info("所有数据库迁移执行完成!")
+    return True
+
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title="iQuant API",
@@ -42,6 +81,9 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# 执行数据库迁移（只在启动时执行一次）
+run_migrations()
 
 # 记录应用启动时间
 APP_START_TIME = time.time()
@@ -73,7 +115,6 @@ app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 app.include_router(auth_router)
 
 # 投资账本路由
-from web.routes_ledger import router as ledger_router
 app.include_router(ledger_router)
 
 
@@ -134,7 +175,7 @@ async def start_backtest(
         days=days,
         initial_capital=initial_capital,
     )
-    
+
     # 记录回测执行指标
     backtest_executions_total.labels(strategy=strategy, status='started').inc()
 
@@ -184,9 +225,10 @@ async def run_backtest_sync(
             nav_data=results.get("nav_data", []),
             trades=results.get("trades", []),
         )
-        
+
         # 记录成功指标
-        backtest_executions_total.labels(strategy=strategy, status='success').inc()
+        backtest_executions_total.labels(
+            strategy=strategy, status='success').inc()
         celery_task_duration_seconds.labels(task_name='backtest_sync').observe(
             time.time() - start_time
         )
@@ -207,7 +249,8 @@ async def run_backtest_sync(
 
     except Exception as e:
         # 记录失败指标
-        backtest_executions_total.labels(strategy=strategy, status='failure').inc()
+        backtest_executions_total.labels(
+            strategy=strategy, status='failure').inc()
         logger.error(f"回测失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -218,7 +261,7 @@ async def run_backtest_sync(
 async def start_diagnosis(stock_code: str):
     """启动异步 AI 诊断"""
     task = run_ai_diagnosis.delay(stock_code=stock_code)
-    
+
     # 记录 AI 诊断指标
     ai_diagnosis_total.labels(stock_code=stock_code, status='started').inc()
 
@@ -240,7 +283,8 @@ async def diagnose_stock_sync(stock_code: str):
         cached_result = cache_manager.get("ai_diagnosis", stock_code)
         if cached_result is not None:
             logger.info(f"AI 诊断缓存命中: {stock_code}")
-            ai_diagnosis_total.labels(stock_code=stock_code, status='cache_hit').inc()
+            ai_diagnosis_total.labels(
+                stock_code=stock_code, status='cache_hit').inc()
             return {
                 **cached_result,
                 "from_cache": True,
@@ -253,9 +297,10 @@ async def diagnose_stock_sync(stock_code: str):
 
         # 写入缓存
         cache_manager.set("ai_diagnosis", stock_code, result, ttl=21600)
-        
+
         # 记录成功指标
-        ai_diagnosis_total.labels(stock_code=stock_code, status='success').inc()
+        ai_diagnosis_total.labels(
+            stock_code=stock_code, status='success').inc()
 
         return {
             **result,
@@ -264,7 +309,8 @@ async def diagnose_stock_sync(stock_code: str):
 
     except Exception as e:
         # 记录失败指标
-        ai_diagnosis_total.labels(stock_code=stock_code, status='failure').inc()
+        ai_diagnosis_total.labels(
+            stock_code=stock_code, status='failure').inc()
         logger.error(f"AI 诊断失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -275,7 +321,7 @@ async def diagnose_stock_sync(stock_code: str):
 async def sync_single_stock(stock_code: str, days: int = 365):
     """同步单只股票数据"""
     task = sync_stock_data.delay(stock_code=stock_code, days=days)
-    
+
     # 记录数据同步指标
     data_sync_total.labels(sync_type='single', status='started').inc()
 
@@ -292,7 +338,7 @@ async def sync_batch_stocks(stock_codes: List[str], days: int = 365):
     from core.tasks import batch_sync_stocks
 
     task = batch_sync_stocks.delay(stock_codes=stock_codes, days=days)
-    
+
     # 记录批量同步指标
     data_sync_total.labels(sync_type='batch', status='started').inc()
 
@@ -378,7 +424,7 @@ async def select_stocks(
 
         selector = StockSelector()
         result = selector.select(top_n=top_n, industry=industry)
-        
+
         # 记录选股成功指标
         stock_selection_total.labels(status='success').inc()
 
@@ -409,7 +455,7 @@ async def check_risk(
 
         engine = RiskEngine()
         report = engine.check_trade(stock_code, volume, price)
-        
+
         # 记录风控检查结果
         result_label = 'passed' if report.passed else 'rejected'
         risk_check_total.labels(result=result_label).inc()
@@ -430,25 +476,25 @@ async def check_risk(
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics 端点
-    
+
     暴露应用程序性能指标供 Prometheus 抓取
     """
     # 更新应用运行时间
     app_uptime_seconds.set(time.time() - APP_START_TIME)
-    
+
     # 更新缓存统计
     update_cache_stats(cache_manager)
-    
+
     # 更新数据库连接池统计
     try:
         from core.db_performance import pool_monitor
         update_db_pool_stats(pool_monitor)
     except Exception:
         pass
-    
+
     # 更新 Redis 状态
     update_redis_status(cache_manager)
-    
+
     return Response(
         content=create_metrics_endpoint()().body,
         media_type="text/plain; version=0.0.4; charset=utf-8"

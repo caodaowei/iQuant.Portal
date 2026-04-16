@@ -1,0 +1,200 @@
+:root {
+  /* 默认主题颜色 */
+  --el-color-primary: #409eff;
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+  --el-color-background: #f0f2f5;
+  --el-color-card: #ffffff;
+  --el-color-text: #303133;
+  --el-color-text-secondary: #606266;
+  --el-color-border: #dcdfe6;
+}
+
+/* 深色主题 */
+.dark-theme {
+  --el-color-primary: #409eff;
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+  --el-color-background: #1a1a1a;
+  --el-color-card: #2c2c2c;
+  --el-color-text: #e4e7ed;
+  --el-color-text-secondary: #c0c4cc;
+  --el-color-border: #4e4e4e;
+}
+
+/* 蓝色主题 */
+.blue-theme {
+  --el-color-primary: #1890ff;
+  --el-color-success: #52c41a;
+  --el-color-warning: #faad14;
+  --el-color-danger: #ff4d4f;
+  --el-color-info: #13c2c2;
+  --el-color-background: #f0f5ff;
+  --el-color-card: #ffffff;
+  --el-color-text: #262626;
+  --el-color-text-secondary: #8c8c8c;
+  --el-color-border: #d9d9d9;
+}
+
+/* 绿色主题 */
+.green-theme {
+  --el-color-primary: #52c41a;
+  --el-color-success: #1890ff;
+  --el-color-warning: #faad14;
+  --el-color-danger: #ff4d4f;
+  --el-color-info: #13c2c2;
+  --el-color-background: #f6ffed;
+  --el-color-card: #ffffff;
+  --el-color-text: #262626;
+  --el-color-text-secondary: #8c8c8c;
+  --el-color-border: #d9d9d9;
+}
+
+/* 中国红主题 */
+.china-red-theme {
+  --el-color-primary: #e74c3c;
+  --el-color-success: #e74c3c;
+  --el-color-warning: #f39c12;
+  --el-color-danger: #27ae60;
+  --el-color-info: #3498db;
+  --el-color-background: #fef5f5;
+  --el-color-card: #ffffff;
+  --el-color-text: #333333;
+  --el-color-text-secondary: #666666;
+  --el-color-border: #e8e8e8;
+}
+
+/* 稳重蓝主题 */
+.china-blue-theme {
+  --el-color-primary: #1a73e8;
+  --el-color-success: #e74c3c;
+  --el-color-warning: #f39c12;
+  --el-color-danger: #27ae60;
+  --el-color-info: #95a5a6;
+  --el-color-background: #f0f4f8;
+  --el-color-card: #ffffff;
+  --el-color-text: #333333;
+  --el-color-text-secondary: #666666;
+  --el-color-border: #e8e8e8;
+}
+
+/* 金色主题 */
+.china-gold-theme {
+  --el-color-primary: #f39c12;
+  --el-color-success: #e74c3c;
+  --el-color-warning: #f39c12;
+  --el-color-danger: #27ae60;
+  --el-color-info: #95a5a6;
+  --el-color-background: #fef9f0;
+  --el-color-card: #ffffff;
+  --el-color-text: #333333;
+  --el-color-text-secondary: #666666;
+  --el-color-border: #e8e8e8;
+}
+
+/* 全局样式 */
+body {
+  background-color: var(--el-color-background);
+  color: var(--el-color-text);
+}
+
+/* 卡片样式 */
+el-card {
+  background-color: var(--el-color-card);
+  border-color: var(--el-color-border);
+}
+
+/* 按钮样式 */
+el-button {
+  --el-button-bg-color: var(--el-color-primary);
+  --el-button-border-color: var(--el-color-primary);
+  --el-button-text-color: #ffffff;
+}
+
+/* 输入框样式 */
+el-input {
+  --el-input-bg-color: var(--el-color-card);
+  --el-input-border-color: var(--el-color-border);
+  --el-input-text-color: var(--el-color-text);
+}
+
+/* 表格样式 */
+el-table {
+  --el-table-bg-color: var(--el-color-card);
+  --el-table-text-color: var(--el-color-text);
+  --el-table-border-color: var(--el-color-border);
+}
+
+/* 侧边栏样式 */
+.sidebar {
+  background-color: #304156;
+  transition: width 0.3s;
+  overflow-x: hidden;
+}
+
+/* 顶部导航样式 */
+.header {
+  background-color: var(--el-color-card);
+  border-bottom: 1px solid var(--el-color-border);
+}
+
+/* 主内容区样式 */
+.main-content {
+  background-color: var(--el-color-background);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* 文字颜色 */
+.text-primary {
+  color: var(--el-color-primary);
+}
+
+.text-success {
+  color: var(--el-color-success);
+}
+
+.text-warning {
+  color: var(--el-color-warning);
+}
+
+.text-danger {
+  color: var(--el-color-danger);
+}
+
+.text-info {
+  color: var(--el-color-info);
+}
+
+/* 背景颜色 */
+.bg-primary {
+  background-color: var(--el-color-primary);
+}
+
+.bg-success {
+  background-color: var(--el-color-success);
+}
+
+.bg-warning {
+  background-color: var(--el-color-warning);
+}
+
+.bg-danger {
+  background-color: var(--el-color-danger);
+}
+
+.bg-info {
+  background-color: var(--el-color-info);
+}
+
+.bg-card {
+  background-color: var(--el-color-card);
+}
+
+.bg-background {
+  background-color: var(--el-color-background);
+}
