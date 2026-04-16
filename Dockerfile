@@ -20,10 +20,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制应用代码
 COPY . .
 
-# 暴露端口（FastAPI 和 Flask）
-EXPOSE 8000 5000
+# 暴露端口（FastAPI）
+EXPOSE 8000
 
-# 健康检查（默认检查 FastAPI）
+# 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/api/status || exit 1
 

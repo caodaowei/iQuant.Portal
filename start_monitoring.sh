@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # iQuant 监控系统启动脚本
 # 用法: ./start_monitoring.sh [full|core|stop]
 
@@ -42,17 +42,6 @@ case "${1:-full}" in
         echo ""
         ;;
 
-    flask)
-        echo -e "${YELLOW}启动 Flask 应用（模板渲染）...${NC}"
-        docker-compose --profile flask up -d
-        echo ""
-        echo -e "${GREEN}✓ Flask 应用已启动！${NC}"
-        echo ""
-        echo -e "访问以下面板："
-        echo -e "  ${YELLOW}Flask App:${NC}        http://localhost:5000"
-        echo ""
-        ;;
-
     stop)
         echo -e "${YELLOW}停止所有服务...${NC}"
         docker-compose --profile monitoring down
@@ -73,12 +62,11 @@ case "${1:-full}" in
         ;;
 
     *)
-        echo -e "${RED}用法: $0 {full|core|flask|stop|status|logs}${NC}"
+        echo -e "${RED}用法: $0 {full|core|stop|status|logs}${NC}"
         echo ""
         echo "选项说明："
         echo "  full   - 启动完整监控栈（默认）"
         echo "  core   - 仅启动核心服务"
-        echo "  flask  - 启动 Flask 应用"
         echo "  stop   - 停止所有服务"
         echo "  status - 查看服务状态"
         echo "  logs   - 查看所有日志"

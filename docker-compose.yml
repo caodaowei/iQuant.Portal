@@ -36,36 +36,6 @@ services:
       retries: 3
       start_period: 15s
 
-  # Flask 同步应用（可选，用于模板渲染页面）
-  iquant-flask:
-    build: .
-    container_name: iquant-flask
-    command: ["python", "web/app.py"]
-    ports:
-      - "5000:5000"
-    environment:
-      - FLASK_ENV=production
-      - DB_HOST=${DB_HOST:-iquant-postgres}
-      - DB_PORT=${DB_PORT:-5433}
-      - DB_NAME=${DB_NAME:-iquant_strategy}
-      - DB_USER=${DB_USER:-iquant_user}
-      - DB_PASSWORD=${DB_PASSWORD:-admin123}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_DB=${REDIS_DB:-0}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-    volumes:
-      - ./config:/app/config:ro
-      - ./logs:/app/logs
-    restart: unless-stopped
-    networks:
-      - iquant-network
-    depends_on:
-      - postgres
-      - redis
-    profiles:
-      - flask  # 使用 profile 控制是否启动
-
   # Celery Worker（异步任务处理）
   celery-worker:
     build: .

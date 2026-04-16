@@ -22,7 +22,6 @@ docker compose ps
 # ✅ redis (缓存)
 # ⚠️  celery-worker (可能不健康，需要重启)
 # ❌  iquant-fastapi (需要启动)
-# ❌  iquant-flask (可选)
 ```
 
 #### 步骤 2: 启动 FastAPI 后端服务
@@ -37,12 +36,12 @@ docker compose logs -f iquant-fastapi
 
 #### 步骤 3: 访问服务
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| FastAPI 后端 | http://localhost:8000 | 主后端 API |
-| API 文档 | http://localhost:8000/api/docs | Swagger UI |
-| 系统状态 | http://localhost:8000/api/status | 健康检查 |
-| 前端应用 | http://localhost:3000 | Vue 3 前端 (如果已启动) |
+| 服务         | 地址                             | 说明                    |
+| ------------ | -------------------------------- | ----------------------- |
+| FastAPI 后端 | http://localhost:8000            | 主后端 API              |
+| API 文档     | http://localhost:8000/api/docs   | Swagger UI              |
+| 系统状态     | http://localhost:8000/api/status | 健康检查                |
+| 前端应用     | http://localhost:3000            | Vue 3 前端 (如果已启动) |
 
 ---
 
@@ -61,16 +60,19 @@ docker compose logs -f iquant-fastapi
 根据您的环境选择:
 
 **如果使用 conda:**
+
 ```powershell
 conda activate iQuant
 ```
 
 **如果使用 venv:**
+
 ```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
 **如果直接安装:**
+
 ```powershell
 # 直接使用 python 命令
 python --version
@@ -83,6 +85,7 @@ pip install -r requirements.txt
 ```
 
 如果遇到 TA-Lib 安装问题:
+
 ```powershell
 # 从 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib 下载对应版本
 pip install TA_Lib‑0.4.28‑cp39‑cp39‑win_amd64.whl
@@ -155,9 +158,6 @@ npm run dev
 # 启动 FastAPI (开发模式)
 python -m uvicorn web.app_async:app --reload
 
-# 启动 Flask (兼容模式)
-python -m flask --app web.app run --host 0.0.0.0 --port 5000
-
 # 运行测试
 pytest tests/ -v
 
@@ -220,6 +220,7 @@ docker compose up -d --build
 **症状**: `Connection refused` 或 `Authentication failed`
 
 **解决方案**:
+
 ```powershell
 # 检查 PostgreSQL 是否运行
 docker ps | findstr postgres
@@ -239,6 +240,7 @@ netstat -ano | findstr ":5433"
 **症状**: `Redis connection error`
 
 **解决方案**:
+
 ```powershell
 # 检查 Redis 是否运行
 docker ps | findstr redis
@@ -255,6 +257,7 @@ docker logs iquantportal-redis-1
 **症状**: `Address already in use`
 
 **解决方案**:
+
 ```powershell
 # 查看端口占用
 netstat -ano | findstr ":8000"
@@ -271,6 +274,7 @@ python -m uvicorn web.app_async:app --port 8001
 **症状**: Celery worker 显示 unhealthy
 
 **解决方案**:
+
 ```powershell
 # 重启 Celery worker
 docker compose restart celery-worker
@@ -287,6 +291,7 @@ docker compose up -d --build celery-worker
 **症状**: API 请求失败
 
 **解决方案**:
+
 ```powershell
 # 检查前端代理配置
 cat frontend/vite.config.ts
@@ -305,16 +310,19 @@ curl http://localhost:8000/api/status
 ### 典型开发流程
 
 1. **启动基础设施**
+
    ```powershell
    docker compose up -d postgres redis
    ```
 
 2. **启动后端服务**
+
    ```powershell
    python -m uvicorn web.app_async:app --reload
    ```
 
 3. **启动前端服务**（如需）
+
    ```powershell
    cd frontend && npm run dev
    ```
@@ -325,6 +333,7 @@ curl http://localhost:8000/api/status
    - 查看控制台日志
 
 5. **运行测试**
+
    ```powershell
    pytest tests/ -v
    ```

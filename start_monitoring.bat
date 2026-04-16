@@ -10,7 +10,6 @@ echo.
 if "%1"=="" goto full
 if "%1"=="full" goto full
 if "%1"=="core" goto core
-if "%1"=="flask" goto flask
 if "%1"=="stop" goto stop
 if "%1"=="status" goto status
 if "%1"=="logs" goto logs
@@ -44,15 +43,6 @@ echo   API 文档:         http://localhost:8000/api/docs
 echo.
 goto end
 
-:flask
-echo 启动 Flask 应用（模板渲染）...
-docker-compose --profile flask up -d
-echo.
-echo ✓ Flask 应用已启动！
-echo.
-echo 访问以下面板：
-echo   Flask App:        http://localhost:5000
-echo.
 goto end
 
 :stop
@@ -75,12 +65,11 @@ docker-compose --profile monitoring logs -f
 goto end
 
 :usage
-echo 用法: %0 {full^|core^|flask^|stop^|status^|logs}
+echo 用法: %0 {full^|core^|stop^|status^|logs}
 echo.
 echo 选项说明：
 echo   full   - 启动完整监控栈（默认）
 echo   core   - 仅启动核心服务
-echo   flask  - 启动 Flask 应用
 echo   stop   - 停止所有服务
 echo   status - 查看服务状态
 echo   logs   - 查看所有日志

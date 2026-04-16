@@ -40,7 +40,7 @@ iQuant.Portal/
 │   └── test_strategies.py
 ├── web/                # Web界面 ✅
 │   ├── __init__.py
-│   ├── app.py
+│   ├── app_async.py
 │   └── templates/
 │       ├── base.html
 │       ├── index.html
@@ -92,10 +92,10 @@ iQuant.Portal/
 
 - [x] 策略基类 (TimingStrategy)
 - [x] 策略管理器 (StrategyManager)
-- [x] 均线趋势策略 (MA\_TREND)
-- [x] MACD信号策略 (MACD\_SIGNAL)
-- [x] RSI均值回归策略 (RSI\_MEAN\_REVERT)
-- [x] 布林带突破策略 (BOLL\_BREAKOUT)
+- [x] 均线趋势策略 (MA_TREND)
+- [x] MACD信号策略 (MACD_SIGNAL)
+- [x] RSI均值回归策略 (RSI_MEAN_REVERT)
+- [x] 布林带突破策略 (BOLL_BREAKOUT)
 - [x] 共识信号聚合 (多数表决/加权平均)
 
 ### Phase 4 ✅ 回测引擎
@@ -126,14 +126,15 @@ iQuant.Portal/
 
 ### Phase 7 ✅ Web界面
 
-- [x] Flask Web服务
-- [x] FastAPI 异步服务 (新增)
+- [x] FastAPI 异步服务
+- [x] Vue.js 前端界面
 - [x] 系统状态监控
 - [x] 策略管理界面
 - [x] 回测执行界面
 - [x] 数据同步接口
 - [x] 风控检查接口
 - [x] 交易接口 (下单/持仓/订单)
+- [x] AI诊断功能
 - [x] Systemd服务部署
 - [x] Docker Compose 部署
 
@@ -207,9 +208,9 @@ cp config/.env.example config/.env
 
 **配置内容**：
 
-- 数据库连接（DB\_HOST, DB\_PORT, DB\_NAME 等）
-- Redis 配置（REDIS\_HOST, REDIS\_PORT 等）
-- API Token（TUSHARE\_TOKEN 等）
+- 数据库连接（DB_HOST, DB_PORT, DB_NAME 等）
+- Redis 配置（REDIS_HOST, REDIS_PORT 等）
+- API Token（TUSHARE_TOKEN 等）
 - 日志配置
 - 交易和回测参数
 
@@ -345,6 +346,7 @@ pip install -e ".[dev]"
 1. 安装Docker Desktop for Windows：<https://www.docker.com/products/docker-desktop>
 2. 启动Docker Desktop
 3. 打开PowerShell或命令提示符，执行以下命令：
+
    ```powershell
    # 运行PostgreSQL容器
    docker run -d --name pgsqldev -e POSTGRES_PASSWORD=admin123 -e POSTGRES_USER=admin -e POSTGRES_DB=testappdb -p 5433:5432 -v E:\Dev\postgres\data:/var/lib/pgsqldev/data postgres
@@ -352,7 +354,9 @@ pip install -e ".[dev]"
    # 进入容器创建用户和数据库
    docker exec -it pgsqldev psql -U admin
    ```
+
 4. 在PostgreSQL命令行中执行：
+
    ```sql
    -- 创建用户
    CREATE USER iquant_user WITH PASSWORD 'admin123';
@@ -417,7 +421,7 @@ cp config/.env.example config/.env
    "C:\Program Files\PostgreSQL\[版本号]\bin\psql.exe" -h localhost -U iquant_user -d iquant_strategy -f db\migrations\005_create_risk_tables.sql
    "C:\Program Files\PostgreSQL\[版本号]\bin\psql.exe" -h localhost -U iquant_user -d iquant_strategy -f db\migrations\006_create_trading_tables.sql
    ```
-   *注意：请将\[版本号]替换为实际安装的PostgreSQL版本*
+   _注意：请将\[版本号]替换为实际安装的PostgreSQL版本_
 
 **方法2：Docker部署的PostgreSQL（Windows环境）**
 
@@ -425,7 +429,7 @@ cp config/.env.example config/.env
    ```powershell
    docker ps
    ```
-   *注意：容器名称为`pgsqldev`，端口映射为5433:5432*
+   _注意：容器名称为`pgsqldev`，端口映射为5433:5432_
 2. 执行数据库迁移命令（PowerShell）：
    ```powershell
    # 执行所有迁移脚本
@@ -478,36 +482,34 @@ python main.py
 **Windows环境：**
 
 ```cmd
-# 方式1: 直接运行Flask应用
-python -m web.app
+# 激活虚拟环境
+& .\venv\Scripts\Activate.ps1
 
-# 方式2: 使用PowerShell运行启动脚本
-powershell -ExecutionPolicy Bypass -File .\start_web.sh
-
-方式2：在项目根目录运行
-# 返回到项目根目录
-cd ..
-
-# 激活iQuant环境
-conda activate iQuant
-
-# 设置FLASK_APP环境变量
-$env:FLASK_APP = "web.app"
-$env:FLASK_ENV = "development"
-
-# 启动Flask应用
-flask run
+# 启动FastAPI服务
+python -m uvicorn web.app_async:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **Linux/Mac环境：**
 
 ```bash
-# 方式1: 使用启动脚本
-./start_web.sh
+# 激活虚拟环境
+source venv/bin/activate
 
-# 方式2: 直接运行Flask应用
-python -m web.app
+# 启动FastAPI服务
+uvicorn web.app_async:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**使用启动脚本：**
+
+```bash
+# 启动完整服务（FastAPI + Celery + Redis）
+./start_async.sh
+```
+
+**访问地址：**
+
+- FastAPI文档: http://localhost:8000/api/docs
+- Vue前端: http://localhost:3000 (需要单独启动)
 
 #### 5.3 访问Web界面
 
@@ -529,6 +531,8 @@ python -m web.app
   # 使用Python调试器
   python -m pdb main.py
   ```
+
+````
 
 #### 6.3 API测试
 
@@ -595,7 +599,7 @@ python -m web.app
 
 #### 后端框架
 
-- **Web 服务**: FastAPI (异步) + Flask (同步，兼容)
+- **Web 服务**: FastAPI (异步)
 - **任务队列**: Celery + Redis Broker
 - **Python**: 3.9+
 
@@ -635,7 +639,7 @@ python -m web.app
 #### 部署与运维
 
 - **容器化**: Docker + Docker Compose
-- **服务编排**: 6个容器 (FastAPI, Flask, Celery, PostgreSQL, Redis, Flower)
+- **服务编排**: 5个容器 (FastAPI, Celery, PostgreSQL, Redis, Flower)
 - **配置管理**: Pydantic, python-dotenv
 
 ## 📚 文档导航
@@ -661,25 +665,25 @@ python -m web.app
 
 Quest 开发过程中产生的技术文档（按时间正序，从早到晚）：
 
-| 更新时间             | 文档                                                             |
-| ---------------- | -------------------------------------------------------------- |
-| 2026-04-15 11:09 | [异步实现](docs/changelog/async-implementation.md) - 异步编程模型实现      |
-| 2026-04-15 11:32 | [数据库优化](docs/changelog/db-optimization.md) - 数据库性能优化           |
+| 更新时间         | 文档                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| 2026-04-15 11:09 | [异步实现](docs/changelog/async-implementation.md) - 异步编程模型实现     |
+| 2026-04-15 11:32 | [数据库优化](docs/changelog/db-optimization.md) - 数据库性能优化          |
 | 2026-04-15 11:45 | [监控方案](docs/changelog/monitoring.md) - 系统监控和告警                 |
-| 2026-04-15 11:50 | [实现总结](docs/changelog/implementation-summary.md) - 功能实现总览      |
-| 2026-04-15 12:43 | [代码清理](docs/changelog/code-cleanup.md) - 代码重构和清理记录             |
-| 2026-04-15 12:49 | [最终清理](docs/changelog/final-code-cleanup.md) - 最终代码清理报告        |
+| 2026-04-15 11:50 | [实现总结](docs/changelog/implementation-summary.md) - 功能实现总览       |
+| 2026-04-15 12:43 | [代码清理](docs/changelog/code-cleanup.md) - 代码重构和清理记录           |
+| 2026-04-15 12:49 | [最终清理](docs/changelog/final-code-cleanup.md) - 最终代码清理报告       |
 | 2026-04-15 14:01 | [缓存实现](docs/changelog/cache-implementation.md) - Redis 缓存层实现总结 |
 
 ### 🌐 前端文档
 
 - [前端项目说明](frontend/README.md) - Vue 3 前端项目文档
 
-***
+---
 
 > 💡 **提示**: 新加入项目的开发者建议先阅读 [README.md](README.md) 了解项目概况，然后根据需求查阅相应的配置指南。
 
-***
+---
 
 ## 🚀 快速开始（本地开发）
 
@@ -712,13 +716,13 @@ docker compose up -d
 
 #### 访问服务
 
-| 服务         | 地址                                 | 说明         |
-| ---------- | ---------------------------------- | ---------- |
-| FastAPI 后端 | <http://localhost:8000>            | 主后端 API    |
-| API 文档     | <http://localhost:8000/api/docs>   | Swagger UI |
-| 系统状态       | <http://localhost:8000/api/status> | 健康检查       |
-| PostgreSQL | localhost:5433                     | 外部访问端口     |
-| Redis      | localhost:6379                     | 缓存服务       |
+| 服务         | 地址                               | 说明         |
+| ------------ | ---------------------------------- | ------------ |
+| FastAPI 后端 | <http://localhost:8000>            | 主后端 API   |
+| API 文档     | <http://localhost:8000/api/docs>   | Swagger UI   |
+| 系统状态     | <http://localhost:8000/api/status> | 健康检查     |
+| PostgreSQL   | localhost:5433                     | 外部访问端口 |
+| Redis        | localhost:6379                     | 缓存服务     |
 
 #### 常用命令
 
@@ -830,9 +834,6 @@ TUSHARE_TOKEN=your_token_here
 ```bash
 # 方式一：使用 uvicorn 启动 FastAPI（推荐）
 python -m uvicorn web.app_async:app --host 0.0.0.0 --port 8000 --reload
-
-# 方式二：启动 Flask 应用
-python -m flask --app web.app run --host 0.0.0.0 --port 5000
 ```
 
 #### 6. 启动前端服务
@@ -852,16 +853,15 @@ npm run dev
 
 ### 端口规划总结
 
-| 服务            | 端口   | 说明                       |
-| ------------- | ---- | ------------------------ |
-| 前端 (Vite)     | 3000 | Vue.js 开发服务器             |
-| 后端 (FastAPI)  | 8000 | 主后端 API                  |
-| 后端 (Flask)    | 5000 | 旧版同步服务（可选）               |
-| PostgreSQL    | 5432 | 数据库（内部）/ 5433（Docker 外部） |
-| Redis         | 6379 | 缓存服务                     |
-| Celery Flower | 5555 | 任务监控（可选）                 |
-| Prometheus    | 9090 | 指标收集（可选）                 |
-| Grafana       | 3100 | 可视化面板（可选）                |
+| 服务           | 端口 | 说明                                |
+| -------------- | ---- | ----------------------------------- |
+| 前端 (Vite)    | 3000 | Vue.js 开发服务器                   |
+| 后端 (FastAPI) | 8000 | 主后端 API                          |
+| PostgreSQL     | 5432 | 数据库（内部）/ 5433（Docker 外部） |
+| Redis          | 6379 | 缓存服务                            |
+| Celery Flower  | 5555 | 任务监控（可选）                    |
+| Prometheus     | 9090 | 指标收集（可选）                    |
+| Grafana        | 3100 | 可视化面板（可选）                  |
 
 ### 故障排查
 
@@ -898,3 +898,4 @@ lsof -i :8000
 ```
 
 更多详细文档请参考 [Docker Compose 部署指南](docs/deployment/docker-deployment.md)。
+````

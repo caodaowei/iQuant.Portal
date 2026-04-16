@@ -38,16 +38,16 @@
                          │
 ┌────────────────────────┴────────────────────────────────────┐
 │                      应用层                                 │
-│  ┌──────────────┐         ┌──────────────┐                 │
-│  │   FastAPI    │         │    Flask     │                 │
-│  │  (异步主服务) │         │  (同步兼容)   │                 │
-│  └──────────────┘         └──────────────┘                 │
-│         │                       │                          │
-│  ┌──────┴──────┐         ┌─────┴─────┐                     │
-│  │ API 路由层   │         │ API 路由层│                     │
-│  │ - Auth      │         │ - Legacy  │                     │
-│  │ - Strategy  │         └───────────┘                     │
-│  │ - Backtest  │                                            │
+│  ┌──────────────┐                                          │
+│  │   FastAPI    │                                          │
+│  │ (异步主服务)  │                                          │
+│  └──────────────┘                                          │
+│         │                                                   │
+│  ┌──────┴──────┐                                           │
+│  │ API 路由层   │                                           │
+│  │ - Auth      │                                           │
+│  │ - Strategy  │                                           │
+│  │ - Backtest  │                                           │
 │  │ - Trading   │                                            │
 │  │ - Data      │                                            │
 │  └─────────────┘                                            │
@@ -84,35 +84,34 @@
 
 #### 后端技术栈
 
-| 层次 | 技术选型 | 版本 | 选型理由 |
-|------|---------|------|---------|
-| Web框架 | FastAPI | 0.104+ | 原生异步、高性能、自动生成文档 |
-| Web框架(兼容) | Flask | 3.0+ | 成熟稳定、生态丰富 |
-| ORM | SQLAlchemy | 2.0+ | 功能强大、支持异步 |
-| 任务队列 | Celery | 5.3+ | 分布式、可靠、生态成熟 |
-| 缓存 | Redis | 7.0+ | 高性能、数据结构丰富 |
-| 数据库 | PostgreSQL | 15+ | ACID、JSONB、扩展性强 |
+| 层次     | 技术选型   | 版本   | 选型理由                       |
+| -------- | ---------- | ------ | ------------------------------ |
+| Web框架  | FastAPI    | 0.104+ | 原生异步、高性能、自动生成文档 |
+| ORM      | SQLAlchemy | 2.0+   | 功能强大、支持异步             |
+| 任务队列 | Celery     | 5.3+   | 分布式、可靠、生态成熟         |
+| 缓存     | Redis      | 7.0+   | 高性能、数据结构丰富           |
+| 数据库   | PostgreSQL | 15+    | ACID、JSONB、扩展性强          |
 
 #### 前端技术栈
 
-| 技术 | 版本 | 选型理由 |
-|------|------|---------|
-| Vue.js | 3.3+ | 渐进式、Composition API |
-| TypeScript | 5.0+ | 类型安全、开发体验好 |
-| Vite | 5.0+ | 极速构建、热更新快 |
-| Element Plus | 2.4+ | 组件丰富、中文文档 |
-| ECharts | 5.4+ | 图表强大、中文支持好 |
-| Pinia | 2.1+ | 轻量、TypeScript友好 |
+| 技术         | 版本 | 选型理由                |
+| ------------ | ---- | ----------------------- |
+| Vue.js       | 3.3+ | 渐进式、Composition API |
+| TypeScript   | 5.0+ | 类型安全、开发体验好    |
+| Vite         | 5.0+ | 极速构建、热更新快      |
+| Element Plus | 2.4+ | 组件丰富、中文文档      |
+| ECharts      | 5.4+ | 图表强大、中文支持好    |
+| Pinia        | 2.1+ | 轻量、TypeScript友好    |
 
 #### 运维技术栈
 
-| 技术 | 用途 |
-|------|------|
-| Docker | 容器化 |
-| Docker Compose | 服务编排 |
-| Prometheus | 指标收集 |
-| Grafana | 可视化监控 |
-| Loguru | 结构化日志 |
+| 技术           | 用途       |
+| -------------- | ---------- |
+| Docker         | 容器化     |
+| Docker Compose | 服务编排   |
+| Prometheus     | 指标收集   |
+| Grafana        | 可视化监控 |
+| Loguru         | 结构化日志 |
 
 ---
 
@@ -177,6 +176,7 @@
 #### 1.3 缓存策略设计
 
 **缓存Key设计规范**:
+
 ```
 格式: {namespace}:{type}:{identifier}:{optional_params}
 
@@ -188,6 +188,7 @@
 ```
 
 **缓存失效策略**:
+
 - TTL 自动过期
 - 数据更新时主动清除
 - LRU 淘汰策略
@@ -206,12 +207,12 @@ class TimingStrategy(ABC):
         indicators = self.calculate_indicators(data)
         signals = self.generate_signals(indicators)
         return self.filter_signals(signals)
-    
+
     @abstractmethod
     def calculate_indicators(self, data):
         """子类实现具体指标计算"""
         pass
-    
+
     @abstractmethod
     def generate_signals(self, indicators):
         """子类实现信号生成逻辑"""
@@ -223,14 +224,14 @@ class TimingStrategy(ABC):
 ```python
 class StrategyRegistry:
     """策略注册表 (注册表模式)"""
-    
+
     _strategies = {}
-    
+
     @classmethod
     def register(cls, strategy_class):
         """注册策略"""
         cls._strategies[strategy_class.code] = strategy_class
-    
+
     @classmethod
     def get_strategy(cls, code):
         """获取策略实例"""
@@ -241,11 +242,12 @@ class StrategyRegistry:
 #### 2.3 信号聚合策略
 
 **多数表决算法**:
+
 ```python
 def majority_vote(signals):
     buy_count = sum(1 for s in signals if s.type in ['buy', 'strong_buy'])
     sell_count = sum(1 for s in signals if s.type in ['sell', 'strong_sell'])
-    
+
     if buy_count > sell_count and buy_count >= threshold:
         return 'buy'
     elif sell_count > buy_count and sell_count >= threshold:
@@ -254,6 +256,7 @@ def majority_vote(signals):
 ```
 
 **加权平均算法**:
+
 ```python
 def weighted_average(signals, weights):
     score = 0
@@ -263,7 +266,7 @@ def weighted_average(signals, weights):
         elif signal.type == 'buy':
             score += 0.5 * weight
         # ... 其他信号类型
-    
+
     if score > 0.6:
         return 'strong_buy'
     elif score > 0.3:
@@ -309,38 +312,38 @@ class BacktestState:
     cash: float
     positions: Dict[str, Position]
     total_value: float
-    
+
     def snapshot(self):
         """创建状态快照"""
         return copy.deepcopy(self)
 
 class BacktestEngine:
     """回测引擎"""
-    
+
     def __init__(self, initial_capital, commission_rate, slippage):
         self.state = BacktestState(date=start_date, cash=initial_capital)
         self.history = []  # 历史记录
-    
+
     def run(self, strategy, data):
         """运行回测"""
         for date in data.dates:
             # 1. 更新市场数据
             market_data = data.get_date(date)
-            
+
             # 2. 生成策略信号
             signal = strategy.generate_signal(market_data)
-            
+
             # 3. 执行交易
             if signal:
                 order = self.create_order(signal)
                 trade = self.execute_order(order, market_data)
-                
+
             # 4. 更新持仓
             self.update_positions()
-            
+
             # 5. 记录状态
             self.history.append(self.state.snapshot())
-        
+
         return self.calculate_performance()
 ```
 
@@ -353,22 +356,22 @@ class BacktestEngine:
 ```python
 class RiskRule(ABC):
     """风控规则 (责任链节点)"""
-    
+
     def __init__(self, next_rule=None):
         self.next_rule = next_rule
-    
+
     def check(self, context):
         """检查风控规则"""
         result = self.do_check(context)
-        
+
         if not result.passed and self.stop_on_violation:
             return result
-        
+
         if self.next_rule:
             return self.next_rule.check(context)
-        
+
         return result
-    
+
     @abstractmethod
     def do_check(self, context):
         pass
@@ -522,22 +525,22 @@ PENDING → RECEIVED → STARTED → SUCCESS
 
 ```sql
 -- 高频查询索引
-CREATE INDEX idx_stock_daily_code_date 
+CREATE INDEX idx_stock_daily_code_date
 ON stock_daily (stock_code, trade_date DESC);
 
-CREATE INDEX idx_orders_account_status 
+CREATE INDEX idx_orders_account_status
 ON orders (account_id, status);
 
-CREATE INDEX idx_trades_order_no 
+CREATE INDEX idx_trades_order_no
 ON trades (order_no);
 
 -- 部分索引 (常用查询)
-CREATE INDEX idx_active_orders 
-ON orders (status) 
+CREATE INDEX idx_active_orders
+ON orders (status)
 WHERE status IN ('pending', 'partial_filled');
 
 -- GIN 索引 (JSONB 查询)
-CREATE INDEX idx_strategy_params_gin 
+CREATE INDEX idx_strategy_params_gin
 ON strategies USING GIN (params);
 ```
 
@@ -548,11 +551,13 @@ ON strategies USING GIN (params);
 ### RESTful API 设计规范
 
 #### URL 命名规范
+
 - 使用名词复数: `/api/strategies`
 - 使用嵌套表示关系: `/api/strategies/{code}/execute`
 - 使用连字符而非下划线: `/api/backtest-results`
 
 #### HTTP 方法语义
+
 - GET: 查询资源
 - POST: 创建资源/执行操作
 - PUT: 更新资源
@@ -561,6 +566,7 @@ ON strategies USING GIN (params);
 #### 响应格式
 
 **成功响应**:
+
 ```json
 {
   "code": 200,
@@ -572,6 +578,7 @@ ON strategies USING GIN (params);
 ```
 
 **错误响应**:
+
 ```json
 {
   "code": 400,
@@ -588,6 +595,7 @@ ON strategies USING GIN (params);
 ### 认证机制
 
 **JWT Token 结构**:
+
 ```
 Header: { "alg": "HS256", "typ": "JWT" }
 Payload: {
@@ -600,6 +608,7 @@ Signature: HMACSHA256(...)
 ```
 
 **Token 刷新流程**:
+
 ```
 Access Token 过期
    │
@@ -617,6 +626,7 @@ Access Token 过期
 ### 1. 认证与授权
 
 #### JWT 安全配置
+
 ```python
 SECRET_KEY = os.getenv('SECRET_KEY')  # 环境变量存储
 ALGORITHM = "HS256"
@@ -632,6 +642,7 @@ pwd_context = CryptContext(
 ```
 
 #### RBAC 权限控制
+
 ```python
 def require_role(required_role: UserRole):
     def decorator(func):
@@ -648,6 +659,7 @@ def require_role(required_role: UserRole):
 ### 2. API 防护
 
 #### 限流策略
+
 ```python
 # 基于 IP 的限流
 limiter = Limiter(key_func=get_remote_address)
@@ -665,6 +677,7 @@ async def submit_order(request: Request, user=Depends(get_current_user)):
 ```
 
 #### IP 黑名单
+
 ```python
 class IPFilterMiddleware:
     async def __call__(self, scope, receive, send):
@@ -677,11 +690,12 @@ class IPFilterMiddleware:
 ### 3. 数据加密
 
 #### Fernet 加密
+
 ```python
 class SecretsManager:
     def encrypt(self, value: str) -> str:
         return self.fernet.encrypt(value.encode()).decode()
-    
+
     def decrypt(self, encrypted: str) -> str:
         return self.fernet.decrypt(encrypted.encode()).decode()
 
@@ -691,12 +705,13 @@ encrypted_password = secrets.encrypt("db_password")
 ```
 
 #### HTTPS 配置
+
 ```nginx
 server {
     listen 443 ssl http2;
     ssl_certificate /etc/letsencrypt/live/domain/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/domain/privkey.pem;
-    
+
     # 安全配置
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
@@ -711,6 +726,7 @@ server {
 ### 1. 缓存策略
 
 #### 多级缓存架构
+
 ```
 L1: 应用内存缓存 (LRU, 5分钟)
   ↓ Miss
@@ -720,13 +736,14 @@ L3: 数据库查询 (索引优化)
 ```
 
 #### 缓存预热策略
+
 ```python
 # 系统启动时预热热点数据
 async def warmup_cache():
     # 预热股票列表
     stock_list = await fetch_stock_list()
     cache_manager.set('stock:list:all', stock_list, 'stock_list')
-    
+
     # 预热热门股票数据
     for code in POPULAR_STOCKS:
         data = await fetch_daily_data(code)
@@ -736,6 +753,7 @@ async def warmup_cache():
 ### 2. 数据库优化
 
 #### 连接池配置
+
 ```python
 engine = create_engine(
     DATABASE_URL,
@@ -748,6 +766,7 @@ engine = create_engine(
 ```
 
 #### 查询优化
+
 ```python
 # ❌ N+1 查询
 stocks = db.query(Stock).all()
@@ -763,6 +782,7 @@ results = db.query(Stock, Price).join(
 ### 3. 异步优化
 
 #### 并行执行
+
 ```python
 # ❌ 串行执行
 market_data = await market_analyst.analyze(code)
@@ -778,6 +798,7 @@ results = await asyncio.gather(
 ```
 
 #### Background Tasks
+
 ```python
 @app.post("/api/data/sync")
 async def sync_data(background_tasks: BackgroundTasks):
@@ -788,6 +809,7 @@ async def sync_data(background_tasks: BackgroundTasks):
 ### 4. 性能监控
 
 #### Prometheus 指标
+
 ```python
 # 请求延迟直方图
 http_request_duration_seconds = Histogram(
@@ -810,16 +832,16 @@ backtest_executions_total = Counter(
 
 ### A. 设计模式总结
 
-| 设计模式 | 应用场景 | 实现位置 |
-|---------|---------|---------|
-| 策略模式 | 多策略实现 | `strategies/timing/` |
-| 模板方法 | 策略基类 | `strategies/timing/base.py` |
-| 单例模式 | 数据库管理器 | `core/database.py` |
-| 工厂模式 | 策略创建 | `strategies/registry.py` |
-| 观察者模式 | 事件驱动回测 | `core/backtest_engine.py` |
-| 责任链模式 | 风控规则链 | `core/risk_engine.py` |
-| 注册表模式 | 策略注册 | `strategies/registry.py` |
-| 适配器模式 | 多数据源适配 | `core/data_fetcher.py` |
+| 设计模式   | 应用场景     | 实现位置                    |
+| ---------- | ------------ | --------------------------- |
+| 策略模式   | 多策略实现   | `strategies/timing/`        |
+| 模板方法   | 策略基类     | `strategies/timing/base.py` |
+| 单例模式   | 数据库管理器 | `core/database.py`          |
+| 工厂模式   | 策略创建     | `strategies/registry.py`    |
+| 观察者模式 | 事件驱动回测 | `core/backtest_engine.py`   |
+| 责任链模式 | 风控规则链   | `core/risk_engine.py`       |
+| 注册表模式 | 策略注册     | `strategies/registry.py`    |
+| 适配器模式 | 多数据源适配 | `core/data_fetcher.py`      |
 
 ### B. 关键算法
 

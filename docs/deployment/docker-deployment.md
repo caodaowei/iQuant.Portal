@@ -39,7 +39,6 @@
 | 服务 | 容器内端口 | 主机端口 | 说明 |
 |------|-----------|---------|------|
 | FastAPI | 8000 | 8000 | 主后端 API |
-| Flask | 5000 | 5000 | 旧版同步服务（可选） |
 | PostgreSQL | 5432 | 5433 | 数据库（外部访问用5433） |
 | Redis | 6379 | 6379 | 缓存 |
 | Celery Flower | 5555 | 5555 | 任务监控（可选） |
@@ -185,13 +184,6 @@ docker compose --profile monitoring up -d
 - **Grafana**: http://localhost:3100
   - 用户名: `admin`
   - 密码: `admin` (或 `.env` 中设置的值)
-
-### 启用 Flask 服务
-
-```bash
-# 启动 Flask 服务（用于模板渲染页面）
-docker compose --profile flask up -d iquant-flask
-```
 
 ## 故障排查
 
