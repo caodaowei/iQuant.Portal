@@ -200,18 +200,21 @@ pip install -r requirements.txt
 这是应用程序的主要配置文件，包含所有运行时需要的环境变量。
 
 **复制并配置**：
+
 ```bash
 cp config/.env.example config/.env
 ```
 
 **配置内容**：
-- 数据库连接（DB_HOST, DB_PORT, DB_NAME 等）
-- Redis 配置（REDIS_HOST, REDIS_PORT 等）
-- API Token（TUSHARE_TOKEN 等）
+
+- 数据库连接（DB\_HOST, DB\_PORT, DB\_NAME 等）
+- Redis 配置（REDIS\_HOST, REDIS\_PORT 等）
+- API Token（TUSHARE\_TOKEN 等）
 - 日志配置
 - 交易和回测参数
 
 **示例**：
+
 ```env
 # 数据库配置
 DB_HOST=localhost
@@ -234,6 +237,7 @@ TUSHARE_TOKEN=your_tushare_token_here
 用于配置 Python 开发环境，通常由 IDE 读取。
 
 **配置内容**：
+
 ```env
 PYTHONPATH=./
 PYTHON_INTERPRETER=C:\Users\David\miniconda3\envs\iQuant\python.exe
@@ -388,7 +392,7 @@ cp config/.env.example config/.env
   - 用户名：`iquant_user`
   - 密码：`admin123`
   - 数据库名：`iquant_strategy`
-  **具体修改项**：
+    **具体修改项**：
   ```
   DB_PORT=5433  # Docker容器映射的端口
   DB_PASSWORD=admin123  # 与Docker容器中设置的密码一致
@@ -462,6 +466,9 @@ psql -h localhost -U iquant_user -d iquant_strategy -f db/migrations/006_create_
 **Windows环境：**
 
 ```cmd
+# 激活iQuant环境
+conda activate iQuant
+
 # 启动命令行模式
 python main.py
 ```
@@ -587,21 +594,25 @@ python -m web.app
 ### 10. 技术栈
 
 #### 后端框架
+
 - **Web 服务**: FastAPI (异步) + Flask (同步，兼容)
 - **任务队列**: Celery + Redis Broker
 - **Python**: 3.9+
 
 #### 数据库与缓存
+
 - **主数据库**: PostgreSQL 15
 - **缓存层**: Redis 7
 - **ORM**: SQLAlchemy
 
 #### 数据与分析
+
 - **数据源**: Tushare, AkShare
 - **数据分析**: Pandas, NumPy, TA-Lib
 - **可视化**: ECharts, Matplotlib
 
 #### 前端技术
+
 - **框架**: Vue 3 + TypeScript
 - **构建工具**: Vite
 - **UI组件**: Element Plus
@@ -609,21 +620,23 @@ python -m web.app
 - **路由**: Vue Router
 
 #### 安全与认证
+
 - **认证**: JWT + OAuth2
 - **权限**: RBAC (4角色模型)
 - **加密**: Fernet 对称加密
 - **限流**: slowapi
 
 #### 监控与日志
+
 - **指标收集**: Prometheus
 - **可视化**: Grafana
 - **日志**: Loguru (结构化日志)
 
 #### 部署与运维
+
 - **容器化**: Docker + Docker Compose
 - **服务编排**: 6个容器 (FastAPI, Flask, Celery, PostgreSQL, Redis, Flower)
 - **配置管理**: Pydantic, python-dotenv
-
 
 ## 📚 文档导航
 
@@ -648,25 +661,25 @@ python -m web.app
 
 Quest 开发过程中产生的技术文档（按时间正序，从早到晚）：
 
-| 更新时间 | 文档 |
-|----------|------|
-| 2026-04-15 11:09 | [异步实现](docs/changelog/async-implementation.md) - 异步编程模型实现 |
-| 2026-04-15 11:32 | [数据库优化](docs/changelog/db-optimization.md) - 数据库性能优化 |
-| 2026-04-15 11:45 | [监控方案](docs/changelog/monitoring.md) - 系统监控和告警 |
-| 2026-04-15 11:50 | [实现总结](docs/changelog/implementation-summary.md) - 功能实现总览 |
-| 2026-04-15 12:43 | [代码清理](docs/changelog/code-cleanup.md) - 代码重构和清理记录 |
-| 2026-04-15 12:49 | [最终清理](docs/changelog/final-code-cleanup.md) - 最终代码清理报告 |
+| 更新时间             | 文档                                                             |
+| ---------------- | -------------------------------------------------------------- |
+| 2026-04-15 11:09 | [异步实现](docs/changelog/async-implementation.md) - 异步编程模型实现      |
+| 2026-04-15 11:32 | [数据库优化](docs/changelog/db-optimization.md) - 数据库性能优化           |
+| 2026-04-15 11:45 | [监控方案](docs/changelog/monitoring.md) - 系统监控和告警                 |
+| 2026-04-15 11:50 | [实现总结](docs/changelog/implementation-summary.md) - 功能实现总览      |
+| 2026-04-15 12:43 | [代码清理](docs/changelog/code-cleanup.md) - 代码重构和清理记录             |
+| 2026-04-15 12:49 | [最终清理](docs/changelog/final-code-cleanup.md) - 最终代码清理报告        |
 | 2026-04-15 14:01 | [缓存实现](docs/changelog/cache-implementation.md) - Redis 缓存层实现总结 |
 
 ### 🌐 前端文档
 
 - [前端项目说明](frontend/README.md) - Vue 3 前端项目文档
 
----
+***
 
 > 💡 **提示**: 新加入项目的开发者建议先阅读 [README.md](README.md) 了解项目概况，然后根据需求查阅相应的配置指南。
 
----
+***
 
 ## 🚀 快速开始（本地开发）
 
@@ -699,13 +712,13 @@ docker compose up -d
 
 #### 访问服务
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| FastAPI 后端 | http://localhost:8000 | 主后端 API |
-| API 文档 | http://localhost:8000/api/docs | Swagger UI |
-| 系统状态 | http://localhost:8000/api/status | 健康检查 |
-| PostgreSQL | localhost:5433 | 外部访问端口 |
-| Redis | localhost:6379 | 缓存服务 |
+| 服务         | 地址                                 | 说明         |
+| ---------- | ---------------------------------- | ---------- |
+| FastAPI 后端 | <http://localhost:8000>            | 主后端 API    |
+| API 文档     | <http://localhost:8000/api/docs>   | Swagger UI |
+| 系统状态       | <http://localhost:8000/api/status> | 健康检查       |
+| PostgreSQL | localhost:5433                     | 外部访问端口     |
+| Redis      | localhost:6379                     | 缓存服务       |
 
 #### 常用命令
 
@@ -835,20 +848,20 @@ npm install
 npm run dev
 ```
 
-前端将运行在 http://localhost:3000，自动代理 API 请求到后端 8000 端口。
+前端将运行在 <http://localhost:3000，自动代理> API 请求到后端 8000 端口。
 
 ### 端口规划总结
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| 前端 (Vite) | 3000 | Vue.js 开发服务器 |
-| 后端 (FastAPI) | 8000 | 主后端 API |
-| 后端 (Flask) | 5000 | 旧版同步服务（可选） |
-| PostgreSQL | 5432 | 数据库（内部）/ 5433（Docker 外部） |
-| Redis | 6379 | 缓存服务 |
-| Celery Flower | 5555 | 任务监控（可选） |
-| Prometheus | 9090 | 指标收集（可选） |
-| Grafana | 3100 | 可视化面板（可选） |
+| 服务            | 端口   | 说明                       |
+| ------------- | ---- | ------------------------ |
+| 前端 (Vite)     | 3000 | Vue.js 开发服务器             |
+| 后端 (FastAPI)  | 8000 | 主后端 API                  |
+| 后端 (Flask)    | 5000 | 旧版同步服务（可选）               |
+| PostgreSQL    | 5432 | 数据库（内部）/ 5433（Docker 外部） |
+| Redis         | 6379 | 缓存服务                     |
+| Celery Flower | 5555 | 任务监控（可选）                 |
+| Prometheus    | 9090 | 指标收集（可选）                 |
+| Grafana       | 3100 | 可视化面板（可选）                |
 
 ### 故障排查
 

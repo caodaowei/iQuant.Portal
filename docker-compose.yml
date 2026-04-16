@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # FastAPI 异步应用（主应用）
@@ -9,11 +9,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-iquant}
-      - DB_USER=${DB_USER:-iquant}
-      - DB_PASSWORD=${DB_PASSWORD:-iquant123}
+      - DB_HOST=${DB_HOST:-iquant-postgres}
+      - DB_PORT=${DB_PORT:-5433}
+      - DB_NAME=${DB_NAME:-iquant_strategy}
+      - DB_USER=${DB_USER:-iquant_user}
+      - DB_PASSWORD=${DB_PASSWORD:-admin123}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
@@ -45,11 +45,11 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-iquant}
-      - DB_USER=${DB_USER:-iquant}
-      - DB_PASSWORD=${DB_PASSWORD:-iquant123}
+      - DB_HOST=${DB_HOST:-iquant-postgres}
+      - DB_PORT=${DB_PORT:-5433}
+      - DB_NAME=${DB_NAME:-iquant_strategy}
+      - DB_USER=${DB_USER:-iquant_user}
+      - DB_PASSWORD=${DB_PASSWORD:-admin123}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
@@ -72,11 +72,11 @@ services:
     container_name: iquant-celery-worker
     command: ["celery", "-A", "celery_worker.celery", "worker", "--loglevel=info", "--concurrency=4"]
     environment:
-      - DB_HOST=${DB_HOST:-postgres}
-      - DB_PORT=${DB_PORT:-5432}
-      - DB_NAME=${DB_NAME:-iquant}
-      - DB_USER=${DB_USER:-iquant}
-      - DB_PASSWORD=${DB_PASSWORD:-iquant123}
+      - DB_HOST=${DB_HOST:-iquant-postgres}
+      - DB_PORT=${DB_PORT:-5433}
+      - DB_NAME=${DB_NAME:-iquant_strategy}
+      - DB_USER=${DB_USER:-iquant_user}
+      - DB_PASSWORD=${DB_PASSWORD:-admin123}
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
@@ -114,11 +114,11 @@ services:
     image: postgres:18
     container_name: iquant-postgres
     environment:
-      - POSTGRES_DB=${DB_NAME:-iquant}
-      - POSTGRES_USER=${DB_USER:-iquant}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-iquant123}
+      - POSTGRES_DB=${DB_NAME:-iquant_strategy}
+      - POSTGRES_USER=${DB_USER:-iquant_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-admin123}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     ports:
       - "5433:5432"
     restart: unless-stopped

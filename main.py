@@ -31,6 +31,7 @@ def setup_logging():
         level=settings.log_level,
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         rotation="10 MB",
+        
         retention="30 days",
         encoding="utf-8",
     )
